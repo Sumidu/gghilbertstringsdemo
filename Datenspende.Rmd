@@ -390,6 +390,11 @@ ggsave(plot = fullplot, filename = "sbs.pdf", width = 8, height = 5)
 
 
 
+```{r}
+beep(2)
+```
+
+
 
 
 
@@ -404,16 +409,20 @@ anim_data <- all_data %>%
   mutate(rank = factor(rank, levels = c(0:10), labels = paste("Rank", 11:1))) %>% 
   filter(search_type == "search") %>%
   filter(country == "DE") %>%
-  filter(search_date > "2017-09-20")
+  filter(search_date > "2017-09-20") %>%  
+  create_coordinates(gghid) %>%
+  mutate(rank = as.factor(rank))  
 
 anim_data %>% pull(search_date) %>% unique() %>% length() -> frame_pred
 ```
 
 
 ```{r generate_animation}
+repel_label <- ggrepel::geom_label_repel(data = label_positions,
+                                         mapping = aes(x = x, y = y, label = domain),
+                                         seed = 123, size = 3, show.legend = F, min.segment.length = 0, color = "black")
+
 anim_data %>%
-  create_coordinates(gghid) %>%
-  mutate(rank = as.factor(rank)) %>% 
   ggplot() +
   scale_color_manual(values = c("#0000FF", "#FFFF00"), guide = "none") +
   geom_path(data = regions, mapping = aes(x=x,y=y, color = domain_number, group = "1"), inherit.aes = FALSE, alpha = 0.3) +
@@ -422,7 +431,7 @@ anim_data %>%
   scale_color_manual(values = selected_colors) +
   repel_label +
   #label_label+
-  geom_point(alpha = 0.01, size = 2) +
+  geom_point(alpha = 0.01) +
   labs(title = "Hilbert Plot for search results", size = "Rank", color = "Search Term",
        subtitle = "Date: {frame_time}") +
   coord_fixed() +
@@ -438,8 +447,17 @@ anim_data %>%
 
 ```{r render_preview}
 # low res version
-animate(p, renderer = gifski_renderer(), width = 1600, height = 1200, res = 150, fps = 1, duration = frame_pred)
-anim_save("test.gif")
+animate(p, renderer = gifski_renderer(), width = 1600, height = 1000, res = 150, fps = 1, duration = frame_pred)
+anim_save("video.gif")
+```
+
+
+```{r create_mpg}
+
+
+animate(p, renderer = ffmpeg_renderer(), width = 1920, height = 1080, fps = 1, duration = frame_pred, res = 200)
+anim_save("output.mp4")
+beep()
 ```
 
 
@@ -459,8 +477,8 @@ anim_save("test.gif")
 
 ```{r end, include=FALSE}
 
-
-beep(2)
+all_data %>% select(domain, url) %>% head(50) %>% View()
+beep(4)
 ```
 
 
