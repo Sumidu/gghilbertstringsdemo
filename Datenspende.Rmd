@@ -15,86 +15,21 @@ library(gganimate)
 library(progress)
 library(glue)
 library(beepr)
-
-
+library(ggnewscale)
+library(patchwork)
+library(gifski)
 # Parameters
-
-# where is the data?
-pth <- here::here()
-# should I recreate the data from original raw CSV data?
-create_rds_files_from_csv <- FALSE
 top_count <- 30
+
+# is ffmpeg available?
+ffmpeg <- FALSE
 ```
-
-
-# Some helper functions for data
-
-```{r functions}
-# get all entry names for file system
-get_terms <- function(){
-  #files <- dir(pth, pattern = ".*csv")
-  #terms <- str_match(files,"(.*)_.{2}.csv")[,2] %>% unique()
-  #terms
-  c("AfD", "CDU")
-}
-
-
-# function to write a term file in XZ compressed format
-write_terms_rds <- function(term){
-  stop("This function only works when the raw data is available, which is not shared in this repository.")
-  options(readr.show_progress = FALSE)
-  #read files
-  files <- dir(pth, pattern = paste0(".*",term,".*.csv"), full.names = T)
-  all_data <- NULL
-  # setup progress bar
-  pb <- progress_bar$new(
-    format = paste("Reading", term, "[:bar] :percent eta: :eta"),
-    total = length(files), clear = FALSE, width= 100)
-
-  # read files
-  for (file in files) {
-    suppressMessages(
-      suppressWarnings(
-        file_data <- read_csv(file) %>% dplyr::rename(uuid = X1)
-      )
-    )
-
-        all_data <- bind_rows(all_data, file_data)
-    pb$tick()
-  }
-
-  message("Term: ", term, " has ", nrow(all_data), " entries. Compressing file ...")
-  write_rds(all_data, here::here("debugging", paste0("datenspende",term, ".rds")), compress = "xz")
-  message("Done.")
-  options(readr.show_progress = TRUE)
-}
-```
-
-
-
-
-
 
 
 # Keywords in the data set and colors
 
-```{r write_data}
-terms <- get_terms()
-
-if(create_rds_files_from_csv){
-  # run only on subset?
-  term_selection <- terms #head(terms)
-  i <- 1
-
-  total <- length(term_selection)
-  for (term in term_selection) {
-    print(glue("Running {i} of {total} {Sys.time()}"))
-    write_terms_rds(term)
-    i <- i + 1
-  }
-}
-terms
-
+```{r create_colors}
+terms <- c("CDU", "AfD")
 party_colors <- c("#009EE0", # AFD blue
                   "#111111") # CDU black (as gray)
                   #"#009EE0", "#000000", "#46962B", "#000000", 
@@ -118,11 +53,9 @@ selected_colors <- party_colors[selector]
 all_data <- NULL
 for (chosen_term in selected_terms) {
   all_data <- bind_rows(all_data,
-                        read_rds(here::here(glue("datenspende{chosen_term}.rds")))
+                        read_rds(here::here("data", glue("datenspende{chosen_term}.rds")))
                         )
 }
-cat("Files (14 MB) were read.")
-beep()
 
 all_data <- all_data %>%
   mutate(search_date = as_date(search_date)) %>% # Fix date as only days
@@ -130,8 +63,16 @@ all_data <- all_data %>%
   mutate(url = str_replace_all(url, "^[.](.+)", "\\1"))
 
 
-
-date_duration <- all_data %>% pull(search_date) %>% unique() %>% max() - all_data %>% pull(search_date) %>% unique() %>% min()
+# how man days?
+date_duration <-
+  (all_data %>% 
+     pull(search_date) %>% 
+     unique() %>% 
+     max())  - 
+  (all_data %>% 
+    pull(search_date) %>% 
+    unique() %>%
+    min() )
 
 ```
 
@@ -177,25 +118,26 @@ Which domains appeared most frequently in all our search results? We use these t
 ### Top Domain Visualization
 
 ```{r test color path}
-
-
 all_data %>% mutate(domain_number = as.numeric(factor(domain))) %>% pull(domain_number) %>% max()
 
 # create an alternating path variable for color coding
-all_data %>% 
+regions <- all_data %>% 
   select(gghid, domain, url) %>% unique() %>% 
   mutate(domain_number = as.numeric(factor(domain)) %% 2) %>% 
   mutate(domain_number = factor(domain_number)) %>% 
   create_coordinates(gghid) %>% 
-  arrange(gghid) -> regions
-  
-
-
+  arrange(gghid)
 ```
 
 
+# Describe something here.
+
 ```{r find_top_domains}
-plot_terms <- all_data %>% pull(keyword) %>% unique() %>% paste(collapse = ", ")
+plot_terms <- all_data %>% 
+  pull(keyword) %>% 
+  unique() %>% 
+  paste(collapse = ", ")
+
 # find all domains that occur most frequently
 top_domains <- all_data %>%
   group_by(domain) %>%
@@ -207,7 +149,7 @@ top_domains <- all_data %>%
 mean_positions <- all_data %>%
   select(domain, gghid) %>%
   right_join(top_domains) %>%
-  bind_rows(tibble(domain = c("aaaa","zzzz"), gghid = c(1,upper_limit))) %>%
+  bind_rows(tibble(domain = c("aaaa","zzzz"), gghid = c(1,upper_limit))) %>% 
   create_coordinates(gghid) %>% 
   group_by(domain) %>%  # find the average domain position
   summarize(x = round(mean(x),2),  
@@ -221,10 +163,10 @@ label_positions <- mean_positions %>%
  # create_coordinates(gghid) %>%
   filter(!str_detect(domain, "aaaa")) %>%
   filter(!str_detect(domain, "zzzz"))
+```
 
 
-library(ggnewscale)
-
+```{r location_small}
 #preview label positions
 label_positions %>%
   ggplot() +
@@ -232,7 +174,7 @@ label_positions %>%
   geom_path(data = regions, mapping = aes(x = x, y = y, color = domain_number, group = "1"), alpha = 0.4) +
 #  new_scale_color() +
   guides(color = FALSE) +
-  theme(legend.position="none") +
+  theme(legend.position = "none") +
   aes(x = x) +
   aes(y = y) +
   aes(label = domain) +
@@ -244,9 +186,7 @@ label_positions %>%
        subtitle = paste("Websites for terms:", plot_terms),
        caption = paste("Mean location and regions of ",upper_limit, "URLs"))
 
-
-ggsave(filename = "locationssmall.pdf", width = 4, height = 2.5)
-
+ggsave(filename = here("output", "locationssmall.pdf"), width = 4, height = 2.5)
 ```
 
 
@@ -278,38 +218,63 @@ all_data %>%
 
 
 all_data %>%
-  #filter(keyword %in% c("AfD", "CDU")) %>% 
-  mutate(rank = 10 - rank) %>% 
+  #filter(keyword %in% c("AfD", "CDU")) %>%
+  mutate(rank = 10 - rank) %>%
   filter(rank > 0) %>%
-  mutate(rank = factor(rank, levels = c(0:10), labels = paste("Rank", 11:1))) %>% 
+  mutate(rank = factor(
+    rank,
+    levels = c(0:10),
+    labels = paste("Rank", 11:1)
+  )) %>%
   filter(search_type == "search") %>%
   filter(country == "DE") %>%
   filter(search_date == "2017-09-20") %>%
   create_coordinates(gghid) %>%
-  mutate(rank = as.factor(rank)) %>% 
+  mutate(rank = as.factor(rank)) %>%
   ggplot() +
   scale_color_manual(values = c("#0000FF", "#FFFF00"), guide = "none") +
-  geom_path(data = regions, mapping = aes(x=x,y=y, color = domain_number, group = "1"), inherit.aes = FALSE, alpha = 0.3) +
+  geom_path(
+    data = regions,
+    mapping = aes(
+      x = x,
+      y = y,
+      color = domain_number,
+      group = "1"
+    ),
+    inherit.aes = FALSE,
+    alpha = 0.3
+  ) +
   labs(color = "Region") +
   guides(color = FALSE) +
   new_scale_color() +
   scale_color_manual(values = selected_colors) +
-  aes(x = x, y = y, color = keyword, label = domain)+ #, size = rank) +
+  aes(
+    x = x,
+    y = y,
+    color = keyword,
+    label = domain
+  ) + #, size = rank) +
   repel_label +
   #label_label+
   geom_point(aes(size = rank), alpha = 0.01) +
-  labs(title = "Hilbert Plot for top search results for AfD and CDU", size = "Rank", color = "Search Term",
-       subtitle = "Differences for the AfD and CDU, Date: 2017-09-20",
-       caption = paste("Results for 1298 unique users. Individual results use 0.01 alpha blending.")) +
+  labs(
+    title = "Hilbert Plot for top search results for AfD and CDU",
+    size = "Rank",
+    color = "Search Term",
+    subtitle = "Differences for the AfD and CDU, Date: 2017-09-20",
+    caption = paste(
+      "Results for 1298 unique users. Individual results use 0.01 alpha blending."
+    )
+  ) +
   #coord_fixed() +
   #facet_wrap(~keyword, nrow = 1) +
   guides(colour = guide_legend(override.aes = list(alpha = 1, size = 5))) +
   guides(size = guide_legend(override.aes = list(alpha = 0.5))) +
   my_theme -> singleplot
+
 singleplot
 
-
-ggsave(plot = singleplot, filename = "singleframe.pdf", width = 8, height = 5)
+ggsave(plot = singleplot, filename = here("data", "singleframe.pdf"), width = 8, height = 5)
 ```
 
 
@@ -317,27 +282,46 @@ ggsave(plot = singleplot, filename = "singleframe.pdf", width = 8, height = 5)
 
 # Two Frames
 
-```{r}
-library(patchwork)
+```{r create_two_figures}
+
 
 all_data %>%
-  #filter(keyword %in% c("AfD", "CDU")) %>% 
-  mutate(rank = 10 - rank) %>% 
+  #filter(keyword %in% c("AfD", "CDU")) %>%
+  mutate(rank = 10 - rank) %>%
   filter(rank > 0) %>%
-  mutate(rank = factor(rank, levels = c(0:10), labels = paste("Rank", 11:1))) %>% 
+  mutate(rank = factor(
+    rank,
+    levels = c(0:10),
+    labels = paste("Rank", 11:1)
+  )) %>%
   filter(search_type == "search") %>%
   filter(country == "DE") %>%
   filter(search_date == "2017-09-20") %>%
   create_coordinates(gghid) %>%
-  mutate(rank = as.factor(rank)) %>% 
+  mutate(rank = as.factor(rank)) %>%
   ggplot() +
   scale_color_manual(values = c("#0000FF", "#FFFF00"), guide = "none") +
-  geom_path(data = regions, mapping = aes(x=x,y=y, color = domain_number, group = "1"), inherit.aes = FALSE, alpha = 0.3) +
+  geom_path(
+    data = regions,
+    mapping = aes(
+      x = x,
+      y = y,
+      color = domain_number,
+      group = "1"
+    ),
+    inherit.aes = FALSE,
+    alpha = 0.3
+  ) +
   labs(color = "Region") +
   guides(color = FALSE) +
   new_scale_color() +
   scale_color_manual(values = selected_colors) +
-  aes(x = x, y = y, color = keyword, label = domain)+ #, size = rank) +
+  aes(
+    x = x,
+    y = y,
+    color = keyword,
+    label = domain
+  ) + #, size = rank) +
   repel_label +
   #label_label+
   geom_point(aes(size = rank), alpha = 0.01) +
@@ -348,25 +332,45 @@ all_data %>%
   labs(subtitle = "Date: 2017-09-20") +
   my_theme -> singleplot1
 
+singleplot1
 
 all_data %>%
-  #filter(keyword %in% c("AfD", "CDU")) %>% 
-  mutate(rank = 10 - rank) %>% 
+  #filter(keyword %in% c("AfD", "CDU")) %>%
+  mutate(rank = 10 - rank) %>%
   filter(rank > 0) %>%
-  mutate(rank = factor(rank, levels = c(0:10), labels = paste("Rank", 11:1))) %>% 
+  mutate(rank = factor(
+    rank,
+    levels = c(0:10),
+    labels = paste("Rank", 11:1)
+  )) %>%
   filter(search_type == "search") %>%
   filter(country == "DE") %>%
   filter(search_date == "2017-09-24") %>%
   create_coordinates(gghid) %>%
-  mutate(rank = as.factor(rank)) %>% 
+  mutate(rank = as.factor(rank)) %>%
   ggplot() +
   scale_color_manual(values = c("#0000FF", "#FFFF00"), guide = "none") +
-  geom_path(data = regions, mapping = aes(x=x,y=y, color = domain_number, group = "1"), inherit.aes = FALSE, alpha = 0.3) +
+  geom_path(
+    data = regions,
+    mapping = aes(
+      x = x,
+      y = y,
+      color = domain_number,
+      group = "1"
+    ),
+    inherit.aes = FALSE,
+    alpha = 0.3
+  ) +
   labs(color = "Region") +
   guides(color = FALSE) +
   new_scale_color() +
   scale_color_manual(values = selected_colors) +
-  aes(x = x, y = y, color = keyword, label = domain)+ #, size = rank) +
+  aes(
+    x = x,
+    y = y,
+    color = keyword,
+    label = domain
+  ) + #, size = rank) +
   repel_label +
   #label_label+
   geom_point(aes(size = rank), alpha = 0.01) +
@@ -377,63 +381,87 @@ all_data %>%
   labs(subtitle = "Date: 2017-09-24") +
   my_theme -> singleplot2
 
-singleplot
-
-fullplot <- singleplot1 + singleplot2 + plot_annotation(title = "Hilbert Plot for top search results for AfD and CDU",
-                                                        caption = paste("Results for 1298 unique users. Individual results use 0.01 alpha blending."))
+fullplot <-
+  singleplot1 + singleplot2 + plot_annotation(
+    title = "Hilbert Plot for top search results for AfD and CDU",
+    caption = paste(
+      "Results for 1298 unique users. Individual results use 0.01 alpha blending."
+    )
+  )
 
 
 fullplot 
 
-ggsave(plot = fullplot, filename = "sbs.pdf", width = 8, height = 5)
+ggsave(plot = fullplot, filename = here("data", "sidebyside.pdf"), width = 8, height = 5)
 ```
-
-
-
-```{r}
-beep(2)
-```
-
-
-
-
-
 
 
 # Animation
 
 ```{r generate_animation_data}
+
+# Start the animation at?
+start_date <- "2017-09-20"
+
 anim_data <- all_data %>%
   mutate(rank = 10 - rank) %>% 
   filter(rank > 0) %>%
   mutate(rank = factor(rank, levels = c(0:10), labels = paste("Rank", 11:1))) %>% 
   filter(search_type == "search") %>%
   filter(country == "DE") %>%
-  filter(search_date > "2017-09-20") %>%  
+  filter(search_date > start_date) %>%  
   create_coordinates(gghid) %>%
   mutate(rank = as.factor(rank))  
 
-anim_data %>% pull(search_date) %>% unique() %>% length() -> frame_pred
+anim_data %>% pull(search_date) %>% unique() %>% length() -> frame_pred # how many dates are there?
 ```
 
 
 ```{r generate_animation}
-repel_label <- ggrepel::geom_label_repel(data = label_positions,
-                                         mapping = aes(x = x, y = y, label = domain),
-                                         seed = 123, size = 3, show.legend = F, min.segment.length = 0, color = "black")
+# create label repel instructions used in the animation
+repel_label <- ggrepel::geom_label_repel(
+  data = label_positions,
+  mapping = aes(x = x, y = y, label = domain),
+  seed = 123,
+  size = 3,
+  show.legend = F,
+  min.segment.length = 0,
+  color = "black"
+)
 
+# creates the animation (without rendering)
 anim_data %>%
   ggplot() +
   scale_color_manual(values = c("#0000FF", "#FFFF00"), guide = "none") +
-  geom_path(data = regions, mapping = aes(x=x,y=y, color = domain_number, group = "1"), inherit.aes = FALSE, alpha = 0.3) +
-  new_scale_color() + 
-  aes(x = x, y = y, color = keyword, label = domain, size = rank) +
+  geom_path(
+    data = regions,
+    mapping = aes(
+      x = x,
+      y = y,
+      color = domain_number,
+      group = "1"
+    ),
+    inherit.aes = FALSE,
+    alpha = 0.3
+  ) +
+  new_scale_color() +
+  aes(
+    x = x,
+    y = y,
+    color = keyword,
+    label = domain,
+    size = rank
+  ) +
   scale_color_manual(values = selected_colors) +
   repel_label +
   #label_label+
   geom_point(alpha = 0.01) +
-  labs(title = "Hilbert Plot for search results", size = "Rank", color = "Search Term",
-       subtitle = "Date: {frame_time}") +
+  labs(
+    title = "Hilbert Plot for search results",
+    size = "Rank",
+    color = "Search Term",
+    subtitle = "Date: {frame_time}"
+  ) +
   coord_fixed() +
   #facet_wrap(~keyword) +
   guides(colour = guide_legend(override.aes = list(alpha = 1, size = 5))) +
@@ -448,16 +476,18 @@ anim_data %>%
 ```{r render_preview}
 # low res version
 animate(p, renderer = gifski_renderer(), width = 1600, height = 1000, res = 150, fps = 1, duration = frame_pred)
-anim_save("video.gif")
+anim_save(here("output", "video_preview.gif"))
 ```
 
 
 ```{r create_mpg}
+# Requirs "ffmpeg" to be installed on the system
 
-
-animate(p, renderer = ffmpeg_renderer(), width = 1920, height = 1080, fps = 1, duration = frame_pred, res = 200)
-anim_save("output.mp4")
-beep()
+if (ffmpeg) {
+  animate(p, renderer = ffmpeg_renderer(), width = 1920, height = 1080, fps = 1, duration = frame_pred, res = 200)
+  anim_save(here("output", "video_preview.mp4"))
+  beep()
+}
 ```
 
 
@@ -465,7 +495,7 @@ beep()
 # render animation
 {
   animate(p, renderer = gifski_renderer(), width = 1200, height = 1200, res = 150, fps = 20, duration = 40)
-  anim_save("test.gif")
+  anim_save(here("output", "video.gif"))
   beep()
 }
 ```
