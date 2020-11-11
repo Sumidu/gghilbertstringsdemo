@@ -1,6 +1,6 @@
 ---
 title: "Datenspende Analysis with gghilberstrings"
-author: "André Calero Valdez"
+author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
 date: "7/10/2020"
 output: html_document
 ---
