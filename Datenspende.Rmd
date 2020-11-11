@@ -18,6 +18,7 @@ library(beepr)
 library(ggnewscale)
 library(patchwork)
 library(gifski)
+library(here)
 # Parameters
 top_count <- 30
 
@@ -187,6 +188,7 @@ label_positions %>%
        caption = paste("Mean location and regions of ",upper_limit, "URLs"))
 
 ggsave(filename = here("output", "locationssmall.pdf"), width = 4, height = 2.5)
+ggsave(filename = here("output", "locationssmall.png"), width = 4, height = 2.5)
 ```
 
 
@@ -274,7 +276,7 @@ all_data %>%
 
 singleplot
 
-ggsave(plot = singleplot, filename = here("data", "singleframe.pdf"), width = 8, height = 5)
+ggsave(plot = singleplot, filename = here("output", "singleframe.pdf"), width = 8, height = 5)
 ```
 
 
@@ -501,14 +503,48 @@ if (ffmpeg) {
 ```
 
 
-
-
-
-
 ```{r end, include=FALSE}
-
 all_data %>% select(domain, url) %>% head(50) %>% View()
 beep(4)
 ```
 
+
+
+
+```{r comparison}
+temp_data <- all_data %>% 
+  filter(search_date == dmy("20092017"))
+
+library(Rtsne) # Load package
+
+dta <- temp_data %>% select(keyword, url, rank, person_id) %>% 
+  count(keyword, rank, url)
+  
+set.seed(42) # Sets seed for reproducibility
+
+our_coal <- function(x){
+  coalesce(x, 0L)
+}
+
+prepped <- dta %>% 
+  pivot_wider(names_from = "url", values_from = "n" ) %>% 
+  mutate(keyword = factor(keyword))
+
+prep2 <- prepped %>% mutate_at(vars(3:last_col()), our_coal) %>% 
+  mutate(keyword = as.numeric(keyword))
+
+
+
+tsne_out <- Rtsne(as.matrix(prep2)) # Run TSNE
+
+tsne_out$Y %>% 
+  as_tibble() %>% 
+  add_column(party = prep2$keyword, rank = prep2$rank) %>% 
+  ggplot() +
+  aes(x = V1, y = V2, color = factor(party), size = rank) +
+  geom_point()
+
+
+
+```
 
