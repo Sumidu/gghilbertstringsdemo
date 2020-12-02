@@ -124,7 +124,7 @@ all_data %>% mutate(domain_number = as.numeric(factor(domain))) %>% pull(domain_
 # create an alternating path variable for color coding
 regions <- all_data %>% 
   select(gghid, domain, url) %>% unique() %>% 
-  mutate(domain_number = as.numeric(factor(domain)) %% 2) %>% 
+  mutate(domain_number = as.numeric(factor(domain)) %% 4) %>%  ## used to be 2
   mutate(domain_number = factor(domain_number)) %>% 
   create_coordinates(gghid) %>% 
   arrange(gghid)
@@ -285,6 +285,21 @@ ggsave(plot = singleplot, filename = here("output", "singleframe.pdf"), width = 
 # Two Frames
 
 ```{r create_two_figures}
+my_theme <- theme(
+    plot.background = element_rect(fill = "grey50", color = "grey50"),
+    plot.title = element_text(color = "white"),
+    plot.margin = margin(15, 15, 15, 15),
+    panel.background = element_rect(fill = "grey30", color = "grey50"),
+    panel.grid = element_line(color = "grey50", size = 1),
+    axis.title.x = element_text(color = "white", margin = margin(t = 10, b = 10)),
+    axis.title.y = element_blank(),
+    axis.text = element_text(color = "white"),
+    axis.ticks = element_blank(),
+    legend.position = "None",
+    plot.caption = element_text(color = "white")
+  )
+
+
 
 
 all_data %>%
@@ -299,6 +314,64 @@ all_data %>%
   filter(search_type == "search") %>%
   filter(country == "DE") %>%
   filter(search_date == "2017-09-20") %>%
+  create_coordinates(gghid) %>%
+  mutate(rank = as.factor(rank)) %>%
+  ggplot() +
+  scale_color_manual(values = rep(RColorBrewer::brewer.pal(1, "Set1")[-3],2)) +
+  #scale_color_manual(values = c("#0000FF", "#FFFF00", ), guide = "none") +
+  geom_path(
+    data = regions,
+    mapping = aes(
+      x = x,
+      y = y,
+      color = domain_number,
+      group = "1"
+    ),
+    inherit.aes = FALSE,
+    alpha = 0.8,
+    size = 0.1
+  ) +
+  labs(color = "Region") +
+  guides(color = FALSE) +
+  new_scale_color() +
+  scale_color_manual(values = selected_colors) +
+  aes(
+    x = x,
+    y = y,
+    color = keyword,
+    label = domain
+  ) + #, size = rank) +
+  repel_label +
+  #label_label+
+  geom_point(aes(size = rank), alpha = 0.01) +
+  guides(colour = guide_legend(override.aes = list(alpha = 1, size = 5))) +
+  guides(size = guide_legend(override.aes = list(alpha = 0.5))) +
+  guides(size = FALSE) +
+  guides(colour = FALSE) +
+  labs(subtitle = "Date: 2017-09-20") +
+  facet_wrap(~keyword, nrow = 1) +
+  coord_fixed() +
+  my_theme -> singleplot1
+
+
+ggsave("output/test2.pdf")
+singleplot1 
+```
+
+
+```{r create_two_figures2}
+all_data %>%
+  #filter(keyword %in% c("AfD", "CDU")) %>%
+  mutate(rank = 10 - rank) %>%
+  filter(rank > 0) %>%
+  mutate(rank = factor(
+    rank,
+    levels = c(0:10),
+    labels = paste("Rank", 11:1)
+  )) %>%
+  filter(search_type == "search") %>%
+  filter(country == "DE") %>%
+  filter(search_date == "2017-09-16") %>%
   create_coordinates(gghid) %>%
   mutate(rank = as.factor(rank)) %>%
   ggplot() +
@@ -332,9 +405,10 @@ all_data %>%
   guides(size = FALSE) +
   guides(colour = FALSE) +
   labs(subtitle = "Date: 2017-09-20") +
-  my_theme -> singleplot1
+  facet_wrap(~keyword, nrow = 1) +
+  coord_fixed() +
+  my_theme -> singleplot3
 
-singleplot1
 
 all_data %>%
   #filter(keyword %in% c("AfD", "CDU")) %>%
@@ -381,10 +455,12 @@ all_data %>%
   guides(size = FALSE) +
   guides(colour = FALSE) +
   labs(subtitle = "Date: 2017-09-24") +
+  facet_wrap(~keyword, nrow = 1) +
+  coord_fixed() +
   my_theme -> singleplot2
 
 fullplot <-
-  singleplot1 + singleplot2 + plot_annotation(
+  singleplot1 / singleplot3 / singleplot2 + plot_annotation(
     title = "Hilbert Plot for top search results for AfD and CDU",
     caption = paste(
       "Results for 1298 unique users. Individual results use 0.01 alpha blending."
@@ -394,7 +470,7 @@ fullplot <-
 
 fullplot 
 
-ggsave(plot = fullplot, filename = here("data", "sidebyside.pdf"), width = 8, height = 5)
+ggsave(plot = fullplot, filename = here("output", "sidebyside.pdf"), width = 8, height = 12)
 ```
 
 
@@ -513,7 +589,7 @@ beep(4)
 
 ```{r comparison}
 temp_data <- all_data %>% 
-  filter(search_date == dmy("20092017"))
+  filter(search_date == dmy("20-09-2017"))
 
 library(Rtsne) # Load package
 
@@ -535,16 +611,59 @@ prep2 <- prepped %>% mutate_at(vars(3:last_col()), our_coal) %>%
 
 
 
-tsne_out <- Rtsne(as.matrix(prep2)) # Run TSNE
+tsne_out <- Rtsne(as.matrix(prep2 %>% select(-keyword, -rank))) # Run TSNE
 
 tsne_out$Y %>% 
   as_tibble() %>% 
   add_column(party = prep2$keyword, rank = prep2$rank) %>% 
   ggplot() +
-  aes(x = V1, y = V2, color = factor(party), size = rank) +
-  geom_point()
+  aes(x = V1, y = V2, color = factor(party, labels = c("CDU", "AfD")), size = rank) +
+  geom_point(alpha = 0.7)
 
 
 
+tsne_out
+
+```
+
+
+```{r benchmark}
+if (FALSE) {
+  if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+  BiocManager::install("HilbertCurve")
+}
+
+library(microbenchmark)
+library(HilbertCurve)
+library(gghilbertstrings)
+
+df <- tibble(val = 1:256, 
+       size = runif(256, 1, 5),        # create random sizes 
+       color = rep(c(1,2,3,4),64)) 
+
+# Compare the creation of coordinate systems
+mb <- microbenchmark(times = 100, 
+HilbertCurve = {
+  hc <- HilbertCurve(1, 256, level = 4, newpage = FALSE)
+},
+gghilbertstrings = {
+  ggh <- hilbertd2xy(n = 2^7, df$val)
+})
+
+mb
+
+autoplot(mb) + 
+  coord_flip() + 
+  ggtitle("Comparison of runtime performance using 100 repetions on 4 levels") +
+  labs(caption = "X-Axis on log-scale") +
+  theme_bw()
+```
+
+
+```{r benchmark2}
+
+mb %>% summary() %>% as_tibble() %>% knitr::kable(format = "latex") %>% cat()
 ```
 
