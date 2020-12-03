@@ -236,8 +236,8 @@ label_positions %>%
   geom_point(
     data = regions,
     mapping = aes(x = x, y = y, color = domain_number, group = "1"),
-    alpha = 0.1,
-    size = 2,
+    alpha = 0.3,
+    size = 1.2,
     shape = 15
   ) +
   guides(color = FALSE) +
@@ -399,7 +399,8 @@ ggplot(plot_data) +
     data = plot_data,
     mapping = aes(x = x, y = y, color = keyword, size = as.numeric(rank)),
     color = "white",
-    alpha = 0.1
+    alpha = 0.1,
+    shape = 16
   ) +
   ggrepel::geom_label_repel(
     data = label_positions,
@@ -428,7 +429,81 @@ ggplot(plot_data) +
 # --- save
 ggsave(here::here("output", "multiframe.png"), width = 8, height = 12)  
 
-  ```
+
+```
+
+
+```{r animate_clouds}
+
+# HERE WE ARE ----
+
+all_data %>% 
+  filter(country == "DE") %>% 
+  filter(keyword == "CDU") %>% 
+  mutate(rank = 10 - rank) %>% 
+  filter(rank > 0) %>% 
+  mutate(rank = factor(rank, levels = c(1:10), labels = paste("Rank", 10:1))) %>% 
+  sample_frac(0.01) %>% 
+  create_coordinates(gghid) %>% 
+  mutate(search_date = ymd(search_date))  -> anim_cloud_data
+
+
+anim_cloud_data %>% pull(search_date) %>% unique() %>% length() -> frame_pred
+
+ggplot(anim_cloud_data) +
+  scale_color_manual(values = color_scheme) +
+  guides(color = FALSE) +
+  geom_point(
+    data = regions,
+    mapping = aes(x = x, y = y, color = domain_number, group = "1"),
+    alpha = 0.1,
+    size = 2,
+    shape = 15
+  ) +
+  new_scale_color() +
+  geom_point(
+    data = plot_data,
+    mapping = aes(x = x, y = y, color = keyword, size = as.numeric(rank)),
+    color = "white",
+    alpha = 0.1,
+    shape = 16
+  ) +
+  ggrepel::geom_label_repel(
+    data = label_positions,
+    mapping = aes(x = x, y = y, label = domain),
+    seed = 123,
+    size = 2,
+    show.legend = F,
+    min.segment.length = 0,
+    segment.size = 0.3,
+    fill = "black",
+    color = "grey80",
+    alpha = 0.5
+  ) +
+  coord_fixed() +
+  #facet_grid(rows = vars(search_date), cols = vars(keyword)) +
+  # facet_wrap(. ~ keyword) +
+  my_theme2 +
+  theme(
+    panel.grid = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  theme(legend.position = "none") +
+  transition_time(search_date) -> p
+
+
+
+{
+animate(p, renderer = gifski_renderer(), width = 800, height = 800, res = 70, fps = 1, duration = frame_pred)
+beep()
+}
+anim_save(here("output", "video_preview.gif"))
+
+```
+
 
 
 
@@ -850,43 +925,4 @@ tsne_out
 ```
 
 
-```{r benchmark}
-if (FALSE) {
-  if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-
-  BiocManager::install("HilbertCurve")
-}
-
-library(microbenchmark)
-library(HilbertCurve)
-library(gghilbertstrings)
-
-df <- tibble(val = 1:256, 
-       size = runif(256, 1, 5),        # create random sizes 
-       color = rep(c(1,2,3,4),64)) 
-
-# Compare the creation of coordinate systems
-mb <- microbenchmark(times = 100, 
-HilbertCurve = {
-  hc <- HilbertCurve(1, 256, level = 4, newpage = FALSE)
-},
-gghilbertstrings = {
-  ggh <- hilbertd2xy(n = 2^7, df$val)
-})
-
-mb
-
-autoplot(mb) + 
-  coord_flip() + 
-  ggtitle("Comparison of runtime performance using 100 repetions on 4 levels") +
-  labs(caption = "X-Axis on log-scale") +
-  theme_bw()
-```
-
-
-```{r benchmark2}
-
-mb %>% summary() %>% as_tibble() %>% knitr::kable(format = "latex") %>% cat()
-```
 
