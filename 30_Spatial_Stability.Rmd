@@ -129,7 +129,7 @@ elem_count <- nrow(d1)
 
 # Adding data
 
-```{r}
+```{r add_data}
 # Pick a random position in the data set
 pos <- rdunif(1, b = data_size)
 
@@ -187,3 +187,7 @@ ggsave(plot = r1, filename = here("output", "spatial_stability.png"), width = 14
 
 ```
 
+
+```{r beep, include=FALSE}
+beep()
+```

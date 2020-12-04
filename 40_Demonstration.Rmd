@@ -1,8 +1,8 @@
 ---
 title: "Demonstration DatenspendeBTW17"
-author: Anonymized
-#author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
 date: "3/12/2020"
+params:
+  authors: "Anonymized"
 output: 
   html_document:
     number_sections: true
@@ -36,6 +36,8 @@ top_count <- 30
 # is ffmpeg available?
 ffmpeg <- FALSE
 ```
+
+#### `r params$authors` {-}
 
 
 # Reduced Hilbert Curve Demonstration
@@ -212,7 +214,7 @@ label_positions %>%
     subtitle = paste("Websites for terms:", plot_terms),
     caption = paste("Mean location and regions of ", upper_limit, "URLs")
   ) +
-  my_theme2 +
+  my_theme +
   theme(
     plot.margin = margin(5, 5, 5, 5),
     panel.grid = element_blank(),
@@ -315,4 +317,10 @@ ggarrange(singleplot)  +
 
 # save
 ggsave(here::here("output", "multiframe.png"), width = 8, height = 10)
+```
+
+
+
+```{r include=FALSE}
+beep()
 ```

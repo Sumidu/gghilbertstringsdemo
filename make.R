@@ -9,6 +9,7 @@ osf_auth()
 ## Paramters ----
 anon_folder <- "output/anonymized_html/"
 normal_folder <- "output/html/"
+normal_authors <- list(authors = "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez")
 anon_params <- list(authors = "Anonymized")
 
 # Remove all html output ----
@@ -25,9 +26,11 @@ rmds <- c("00_Teaser.Rmd", "15_Figure_Hilbert_Order.Rmd", "20_Compare_Performanc
 #render files in to versions
 for (rmd in rmds) {
   rmarkdown::render(rmd, output_dir = anon_folder, params = anon_params)
-  rmarkdown::render(rmd, output_dir = normal_folder)
+  rmarkdown::render(rmd, output_dir = normal_folder, params = normal_authors)
 
 }
+
+beep(2)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -#
 # Upload files to OSF ----
@@ -43,7 +46,7 @@ files <- dir(path = normal_folder, pattern = "*.html", full.names = TRUE)
 osf_upload(x = node, path = files, progress = TRUE, conflicts = "overwrite")
 
 
-
+beep(2)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -#
 # Upload figures to sharelatex ----

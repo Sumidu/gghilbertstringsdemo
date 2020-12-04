@@ -180,3 +180,7 @@ mb %>%
   summary() %>% 
   as_tibble() 
 ```
+
+```{r include=FALSE}
+beep()
+```

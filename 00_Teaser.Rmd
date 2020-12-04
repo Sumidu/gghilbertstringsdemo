@@ -1,8 +1,8 @@
 ---
 title: "Create Subplots for Teaser Figure"
-author: Anonymized
-#author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
 date: "3/12/2020"
+params:
+  authors: "Anonymized"
 output: 
   html_document:
     number_sections: true
@@ -36,6 +36,10 @@ if (!("teaser" %in% here::here("output"))) {dir.create(here::here("output", "tea
 # parameters
 top_count <- 30
 ```
+
+
+#### `r params$authors` {-}
+
 
 ```{r read_data}
 terms <- c("CDU", "AfD")
@@ -99,7 +103,6 @@ ggsave(here::here("output", "teaser", "teaser_2.png"), width = 5, height = 5, dp
   end.time <- Sys.time()
   time.taken <- end.time - start.time
   print(time.taken)
-  beep()
 }
 
 upper_limit <- max(all_data$gghid)
@@ -209,5 +212,9 @@ ggpubr::ggarrange(teaser_3) +
   )
 
 ggsave(filename = here("output", "teaser", "teaser_3.png"), width = 5, height = 5, dpi = 500)
+```
+
+```{r beep, include=FALSE}
+beep()
 ```
 
