@@ -13,9 +13,11 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
 library(tidyverse)
 library(glue)
+library(here)
+source(here("R", "our_theme.R"))
+theme_set(theme_bw() + my_theme)
 ```
 
 
@@ -76,7 +78,8 @@ gghilbertplot(df,
               val,
               color = factor(color),
               size = size,
-              add_curve = TRUE)
+              add_curve = TRUE) +
+  coord_fixed()
 ```
 
 ## HilbertCurve
