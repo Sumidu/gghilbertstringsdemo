@@ -19,7 +19,7 @@ unlink(delfiles)
 # Render files ----
 
 # Which files to render?
-rmds <- c("15_Figure_Hilbert_Order.Rmd", "20_Compare_Performance.Rmd", "30_Spatial_Stability.Rmd")
+rmds <- c("00_Teaser.Rmd", "15_Figure_Hilbert_Order.Rmd", "20_Compare_Performance.Rmd", "30_Spatial_Stability.Rmd", "40_Demonstration.Rmd")
 
 #render files in to versions
 for (rmd in rmds) {
