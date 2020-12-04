@@ -6,6 +6,5 @@ target_folder <- "~/Dropbox/Apps/ShareLaTeX/2021 Eurovis - HilbertVisualization 
 files <- dir("output/", pattern = "*.png|*.pdf", full.names = TRUE)
 
 if (FALSE) {
-  file.copy(files,
-            target_folder, overwrite = TRUE)
+  file.copy(files, target_folder, overwrite = TRUE)
 }

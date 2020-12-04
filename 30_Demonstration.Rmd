@@ -1,6 +1,7 @@
 ---
-title: "Demonstration: DatenspendeBTW17"
-author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
+title: "Demonstration DatenspendeBTW17"
+author: Anonymized
+#author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
 date: "3/12/2020"
 output: 
   html_document:
@@ -14,6 +15,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+# dependencies
 library(tidyverse)
 library(magrittr)
 library(lubridate)
@@ -26,7 +28,9 @@ library(ggnewscale)
 library(patchwork)
 library(gifski)
 library(here)
-# Parameters
+source(here::here("R", "our_theme.R"))
+
+# parameters
 top_count <- 30
 
 # is ffmpeg available?
@@ -34,101 +38,9 @@ ffmpeg <- FALSE
 ```
 
 
-# Read in the data
+# Reduced Hilbert Curve Demonstration
 
-```{r read_data}
-####
-#### ----------------- READ LOOP STARTS here
-####
-
-selector <- c(1, 2)
-
-selected_terms <- terms[selector]
-selected_colors <- party_colors[selector]
-all_data <- NULL
-for (chosen_term in selected_terms) {
-  all_data <- bind_rows(all_data,
-                        read_rds(here::here("data", glue("datenspende{chosen_term}.rds")))
-                        )
-}
-
-all_data <- all_data %>%
-  mutate(search_date = as_date(search_date)) %>% # Fix date as only days
-  mutate(domain = str_replace_all(domain, "^[.](.+)", "\\1")) %>%  # fix some broken domains
-  mutate(url = str_replace_all(url, "^[.](.+)", "\\1"))
-
-
-# how man days?
-date_duration <-
-  (
-    all_data %>% 
-      pull(search_date) %>% 
-      unique() %>% 
-      max()
-  )  - 
-  (
-    all_data %>% 
-      pull(search_date) %>% 
-      unique() %>% 
-      min()
-  )
-
-```
-
-A total of `r nrow(all_data)` entries were in the data base. 
-The earliest date is: `r all_data %>% pull(search_date) %>% unique() %>% min()` and the latest date is: `r all_data %>% pull(search_date) %>% unique() %>% min()`.
-Total duration is `r date_duration`.
-
-
-
-
-```{r create_coordinates}
-# create coordinates for all possible urls and collect timing
-{
-  start.time <- Sys.time()
-  all_data <- all_data %>%
-    create_id_column(url)
-  end.time <- Sys.time()
-  time.taken <- end.time - start.time
-  print(time.taken)
-  beep()
-}
-
-upper_limit <- max(all_data$gghid)
-```
-
-There were a total of `r upper_limit` coordinates created for the data set.
-
-
-# Theme Setup
-```{r theme_setup}
-
-my_theme <- theme_void() +
-   theme(
-    panel.background = element_rect(fill = "#EEEEEE", color = "#EEEEEE")
-    #plot.margin = margin(t = 3, r = 10, b = 3, l = 10, unit = "pt")
-    #panel.grid = element_line(color = "#DDDDDD") 
-  )
-  
-my_theme2 <- theme(
-    plot.background = element_rect(fill = "grey50", color = "grey50"),
-    plot.title = element_text(color = "white"),
-    plot.subtitle = element_text(color = "white"),
-    plot.margin = margin(15, 15, 15, 15),
-    plot.caption = element_text(color = "white"),
-    panel.background = element_rect(fill = "grey30", color = "grey50"),
-    panel.grid = element_line(color = "grey50", size = 1),
-    axis.title.x = element_text(color = "white"),
-    axis.title.y = element_text(color = "white"),
-    axis.text = element_text(color = "white"),
-    legend.position = "None"
-  )
-
-```
-
-
-
-
+SOME DESCRIPTION HERE
 
 ```{r}
 df <- data.frame(id = 1:129)
@@ -151,20 +63,66 @@ ggarrange(hilbert_overlay) +
   theme(plot.background = element_rect(fill = "grey50", color = "transparent"))
 
 ggsave(here::here("output", "reduced_curve.pdf"), width = 5, height = 5.5)
-
 ```
 
 
+# Map Demonstration
+
+
+## Read in the data
+
+```{r read_data}
+terms <- c("CDU", "AfD")
+all_data <- NULL
+for (chosen_term in terms) {
+  all_data <- bind_rows(all_data, read_rds(here::here("data", glue("datenspende{chosen_term}.rds"))))
+}
+
+all_data <- all_data %>%
+  mutate(search_date = as_date(search_date)) %>% # Fix date as only days
+  mutate(domain = str_replace_all(domain, "^[.](.+)", "\\1")) %>%  # fix some broken domains
+  mutate(url = str_replace_all(url, "^[.](.+)", "\\1"))
+
+# how many days?
+date_duration <- (all_data %>% pull(search_date) %>% unique() %>% max()) - 
+  (all_data %>% pull(search_date) %>% unique() %>% min())
+
+```
+
+A total of `r nrow(all_data)` entries were in the data base. 
+The earliest date is: `r all_data %>% pull(search_date) %>% unique() %>% min()` and the latest date is: `r all_data %>% pull(search_date) %>% unique() %>% min()`.
+Total duration is `r date_duration`.
+
+
+```{r create_coordinates}
+# create coordinates for all possible urls and collect timing
+{
+  start.time <- Sys.time()
+  all_data <- all_data %>%
+    create_id_column(url)
+  end.time <- Sys.time()
+  time.taken <- end.time - start.time
+  print(time.taken)
+  beep()
+}
+
+upper_limit <- max(all_data$gghid)
+```
+
+There were a total of `r upper_limit` coordinates created for the data set.
+
+
 ## Top domains
+
 Which domains appeared most frequently in all our search results? We use these to create label anchors in the data set.
 
 
 ### Top Domain Visualization
 
-```{r test color path}
+```{r create_regions}
 all_data %>% mutate(domain_number = as.numeric(factor(domain))) %>% pull(domain_number) %>% max()
 
-# create an alternating path variable for color coding
+# encode regions
 regions <- all_data %>% 
   select(gghid, domain, url) %>% unique() %>% 
   mutate(domain_number = as.numeric(factor(domain))) %>%  ## used to be %% 2
@@ -173,8 +131,6 @@ regions <- all_data %>%
   create_coordinates(gghid) %>% 
   arrange(gghid)
 ```
-
-
 
 
 ```{r find_top_domains}
@@ -211,8 +167,7 @@ label_positions <- mean_positions %>%
 ```
 
 
-
-
+## Background Map
 
 ```{r location_small}
 # generics 
@@ -288,17 +243,14 @@ ggsave(filename = here("output", "locationssmall.png"), width = 5, height = 5.5)
 ```
 
 
-
-
-
-
+## Comparison over Time
 
 ```{r}
-# --- generics 
+# generics 
 n_colors <- dim(regions %>% select(domain_number) %>% unique())[1]
 color_scheme <- grDevices::topo.colors(n_colors) %>% sample()
 
-# --- format data
+# format data
 all_data %>% 
   filter(country == "DE") %>% 
   filter(
@@ -311,7 +263,7 @@ all_data %>%
   mutate(rank = factor(rank, levels = c(1:10), labels = paste("Rank", 10:1))) %>% 
   create_coordinates(gghid) -> plot_data
 
-# --- plot
+# plot
 ggplot(plot_data) +
   scale_color_manual(values = color_scheme) +
   geom_point(
@@ -343,7 +295,6 @@ ggplot(plot_data) +
   ) +
   coord_fixed() +
   facet_grid(rows = vars(search_date), cols = vars(keyword)) +
-  # facet_wrap(. ~ keyword) +
   my_theme2 +
   theme(
     panel.grid = element_blank(),
@@ -362,8 +313,6 @@ ggarrange(singleplot)  +
     legend.position = "None"
   )
 
-# --- save
-ggsave(here::here("output", "multiframe.png"), width = 8, height = 10)  
-
-
+# save
+ggsave(here::here("output", "multiframe.png"), width = 8, height = 10)
 ```

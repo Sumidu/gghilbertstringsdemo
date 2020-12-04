@@ -22,6 +22,7 @@ source(here("R", "our_theme.R"))
 theme_set(theme_bw() + my_theme)
 ```
 
+
 ```{r}
 plot_list <- list()
 title_list <- c(

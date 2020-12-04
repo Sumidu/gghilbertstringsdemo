@@ -16,6 +16,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(glue)
 library(here)
+library(magrittr)
+library(stats)
 source(here("R", "our_theme.R"))
 theme_set(theme_bw() + my_theme)
 ```
@@ -94,9 +96,71 @@ hc_points(hc, x1 = df$val,
 
 # Plotting the results
 
+```{r}
+# extract benchmark data
+expression <- mb$expr
+time <- mb$time
+
+measured_times <- data.frame(
+  expression = expression,
+  times = time
+)
+
+measured_times %<>% mutate(times = times / 1000000)
+
+measured_times %>%
+  group_by(expression) %>%
+  filter(
+    times < stats::quantile(.$times, 0.95) 
+    & times > stats::quantile(.$times, 0.05)
+  ) -> measured_times_cropped
+
+# plot
+measured_times_cropped %>% 
+  ggplot(aes(x = expression, y = times)) +
+  geom_violin(color = "transparent", fill = "gold2", alpha = 0.5) +
+  coord_flip() +
+  labs(
+    title = glue("Comparison on {reps} runs [0.05 - 0.95 percentile]"),
+    y = "Time [milliseconds]",
+    caption = "Red dashed lines indicate median execution times."
+  ) +
+  geom_hline(
+    yintercept = median(
+      (measured_times_cropped %>% filter(expression == "gghilbertstrings"))$times
+    ),
+    linetype = "dashed",
+    color = "firebrick",
+    size = 1
+  ) +
+  geom_hline(
+    yintercept = median(
+      (measured_times_cropped %>% filter(expression == "HilbertCurve"))$times
+    ),
+    linetype = "dashed",
+    color = "firebrick",
+    size = 1
+  ) +
+  theme(
+    plot.background = element_rect(fill = "grey50", color = "grey50"),
+    plot.title = element_text(color = "white"),
+    plot.margin = margin(15, 15, 15, 15),
+    panel.background = element_rect(fill = "grey30", color = "grey50"),
+    panel.grid = element_line(color = "grey50", size = 1),
+    axis.title.x = element_text(color = "white", margin = margin(t = 10, b = 10)),
+    axis.title.y = element_blank(),
+    axis.text = element_text(color = "white"),
+    axis.ticks = element_blank(),
+    legend.position = "None",
+    plot.caption = element_text(color = "white")
+  )
+
+# save
+ggsave(here::here("output", "benchmark.pdf"), width = 6.5, height = 3.5, dpi = 900)
+```
 
 
-```{r benchmark_plot, message=FALSE, warning=FALSE}
+```{r benchmark_plot, message=FALSE, warning=FALSE, eval=FALSE}
 autoplot(mb) +
   coord_flip() +
   ggtitle(
@@ -110,7 +174,6 @@ autoplot(mb) +
 Values are microseconds.
 
 ```{r benchmark2}
-
 mb %>% 
   summary() %>% 
   as_tibble() 
