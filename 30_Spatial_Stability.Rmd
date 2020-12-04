@@ -188,6 +188,8 @@ ggsave(plot = r1, filename = here("output", "spatial_stability.png"), width = 14
 ```
 
 
+
+
 ```{r beep, include=FALSE}
 beep()
 ```

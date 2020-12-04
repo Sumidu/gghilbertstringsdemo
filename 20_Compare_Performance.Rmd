@@ -14,11 +14,23 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(microbenchmark)
 library(tidyverse)
 library(glue)
 library(here)
 library(magrittr)
 library(stats)
+if (FALSE) {
+  if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+  
+  BiocManager::install("HilbertCurve")
+}
+
+library(microbenchmark)
+library(HilbertCurve)
+library(gghilbertstrings)
+
 source(here("R", "our_theme.R"))
 theme_set(theme_bw() + my_theme)
 ```
@@ -32,23 +44,15 @@ theme_set(theme_bw() + my_theme)
 First, we load the required packages and create a tibble that contains the data to visualize.
 
 ```{r benchmark_prep}
-if (FALSE) {
-  if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-  
-  BiocManager::install("HilbertCurve")
-}
+size_exponent <- 6
 
-library(microbenchmark)
-library(HilbertCurve)
-library(gghilbertstrings)
 
-df <- tibble(val = 1:256,
-             size = runif(256, 1, 5),
+df <- tibble(val = 1:4^size_exponent,
+             size = runif(4^size_exponent, 1, 5),
              # create random sizes
-             color = rep(c(1, 2, 3, 4), 64))
+             color = rep(c(1, 2, 3, 4), 4^(size_exponent-1)))
 
-reps <- 1000 #takes about 50 seconds on iMac i9 3.5GHz
+reps <- 50 #takes about 50 seconds on iMac i9 3.5GHz
 ```
 
 This is the data that we use for the visualization.
@@ -63,35 +67,15 @@ We run the creation of a coordinate system `r reps` times.
 
 ```{r benchmark, echo=TRUE, results='hide', class.source = 'fold-show'}
 # Compare the creation of coordinate systems
+values <- df$val
+
 mb <- microbenchmark(times = reps,
                      HilbertCurve = {
-                       hc <- HilbertCurve(1, 256, level = 4, newpage = FALSE)
+                       hc <- HilbertCurve(1, 4^size_exponent, level = size_exponent, newpage = FALSE)
                      },
                      gghilbertstrings = {
-                       ggh <- hilbertd2xy(n = 2 ^ 8, df$val)
+                       ggh <- hilbertd2xy(n = 4^size_exponent, values)
                      })
-```
-
-
-# What is being tested here?
-
-## gghilbertstrings
-
-```{r show_plot, echo=TRUE, results='hide', class.source = 'fold-show'}
-gghilbertplot(df,
-              val,
-              color = factor(color),
-              size = size,
-              add_curve = TRUE) +
-  coord_fixed()
-```
-
-## HilbertCurve
-
-```{r show_plot2, echo=TRUE, results='hide', class.source = 'fold-show'}
-hc <- HilbertCurve(1, 256, reference = TRUE)
-hc_points(hc, x1 = df$val, 
-          gp = gpar(fill = c("white", "red", "blue", "green")))
 ```
 
 
@@ -160,6 +144,32 @@ measured_times_cropped %>%
 # save
 ggsave(here::here("output", "benchmark.pdf"), width = 6.5, height = 3.5, dpi = 900)
 ```
+
+
+# What is being tested here?
+
+## gghilbertstrings
+
+```{r show_plot, echo=TRUE, results='hide', class.source = 'fold-show'}
+gghilbertplot(df,
+              val,
+              color = factor(color),
+              size = size,
+              alpha = 0,
+              add_curve = TRUE) +
+  coord_fixed()
+```
+
+## HilbertCurve
+
+```{r show_plot2, echo=TRUE, results='hide', class.source = 'fold-show'}
+hc <- HilbertCurve(1, 256, reference = TRUE)
+hc_points(hc, x1 = df$val, 
+          gp = gpar(fill = c("white", "red", "blue", "green")))
+```
+
+
+
 
 
 ```{r benchmark_plot, message=FALSE, warning=FALSE, eval=FALSE}

@@ -1,0 +1,106 @@
+---
+title: "Spatial stability over time"
+date: "3/12/2020"
+params: 
+  authors : "Anonymized"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_float: true
+    code_folding: hide
+    df_print: paged
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(gghilbertstrings)
+library(patchwork)
+library(beepr)
+library(glue)
+library(here)
+library(ggdark)
+library(pbmcapply)
+source(here("R", "our_theme.R"))
+theme_set(theme_bw() + my_theme)
+
+set.seed(12345)
+
+```
+
+#### `r params$authors` {-}
+
+
+# Increasing the data over time
+
+## Random insertion
+
+```{r over_time}
+testplot <- function(d) {
+  d %>% ggplot(aes(x, y)) + geom_path() + coord_fixed() + theme_bw()
+}
+
+d <- tibble(val = runif(16))
+
+results <- data.frame()
+reps <- 4
+duration <- 2200
+pb <- progressBar(min = 1, max = reps, style = "ETA", substyle = 3)
+for (j in 1:reps) {
+  setTxtProgressBar(pb, j)
+  dold <- d %>% arrange(val) %>%
+    mutate(id = 1:n()) %>%
+    create_coordinates(id) %>%
+    mutate(x = x / max(max(x, na.rm = T), max(y, na.rm = T))) %>%
+    mutate(y = y / max(max(x, na.rm = T), max(y, na.rm = T))) %>%
+    mutate(oldx = NA,
+           oldy = NA,
+           dist = NA)
+  for (i in 1:duration) {
+    newval <- runif(1)
+    
+    dnew <- dold %>%
+      bind_rows(tibble(
+        val = newval,
+        id = NA,
+        x = NA,
+        y = NA
+      )) %>%
+      arrange(val) %>%
+      mutate(id = 1:n()) %>%
+      select(-oldx, -oldy) %>%
+      rename(oldx = x, oldy = y) %>%
+      select(-reld) %>%
+      create_coordinates(id) %>%
+      mutate(x = x / max(max(x, na.rm = T), max(y, na.rm = T))) %>%
+      mutate(y = y / max(max(x, na.rm = T), max(y, na.rm = T))) %>%
+      mutate(dist = sqrt((oldx - x) ^ 2 + (oldy - y) ^ 2))
+    
+    results <- results %>% bind_rows(data.frame(
+      run = c(j),
+      rows = nrow(dnew),
+      dist = dnew %>% summarise(dist = mean(dist, na.rm = T)) %>% pull(dist)
+    ))
+    
+    dold <- dnew
+  }
+}
+close(pb)
+
+
+results %>% ggplot() +
+  aes(x = rows, y = dist) +
+  geom_point(size = 0.1, color = "gold", alpha = 0.2) + 
+  geom_line(aes(group = run), alpha = 0.2, color = "gold") +
+  #geom_smooth(color = "firebrick", alpha = 1, size = 1, fill = "black", method = "loess") + 
+  labs(x = "Size of the Data", y = "Root Mean Squared Displacement") +
+  #scale_x_log10() +
+  #scale_y_log10() +
+  labs(title = "Adding data yields exponentially decreassing spatial displacement") +
+  NULL
+
+ggsave("output/spatial_displacement.pdf", width = 6, height = 3)
+
+```
