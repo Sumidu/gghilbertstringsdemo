@@ -2,7 +2,7 @@
 title: "Create Order Figure"
 date: "3/12/2020"
 params: 
-  authors : "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
+  authors : "Anonmized"
 output: 
   html_document:
     number_sections: true

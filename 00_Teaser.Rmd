@@ -1,8 +1,8 @@
 ---
 title: "Create Subplots for Teaser Figure"
-author: Anonymized
-#author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
 date: "3/12/2020"
+params:
+  authors: "Anonymized"
 output: 
   html_document:
     number_sections: true
@@ -36,6 +36,10 @@ if (!("teaser" %in% here::here("output"))) {dir.create(here::here("output", "tea
 # parameters
 top_count <- 30
 ```
+
+
+#### `r params$authors` {-}
+
 
 ```{r read_data}
 terms <- c("CDU", "AfD")

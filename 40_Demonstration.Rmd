@@ -1,8 +1,8 @@
 ---
 title: "Demonstration DatenspendeBTW17"
-author: Anonymized
-#author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
 date: "3/12/2020"
+params:
+  authors: "Anonymized"
 output: 
   html_document:
     number_sections: true
@@ -36,6 +36,8 @@ top_count <- 30
 # is ffmpeg available?
 ffmpeg <- FALSE
 ```
+
+#### `r params$authors` {-}
 
 
 # Reduced Hilbert Curve Demonstration
