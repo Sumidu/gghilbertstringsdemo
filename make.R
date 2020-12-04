@@ -30,6 +30,8 @@ for (rmd in rmds) {
 
 }
 
+beep(2)
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -#
 # Upload files to OSF ----
 
@@ -44,7 +46,7 @@ files <- dir(path = normal_folder, pattern = "*.html", full.names = TRUE)
 osf_upload(x = node, path = files, progress = TRUE, conflicts = "overwrite")
 
 
-
+beep(2)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -#
 # Upload figures to sharelatex ----

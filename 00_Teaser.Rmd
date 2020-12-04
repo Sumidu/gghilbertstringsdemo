@@ -103,7 +103,6 @@ ggsave(here::here("output", "teaser", "teaser_2.png"), width = 5, height = 5, dp
   end.time <- Sys.time()
   time.taken <- end.time - start.time
   print(time.taken)
-  beep()
 }
 
 upper_limit <- max(all_data$gghid)
@@ -213,5 +212,9 @@ ggpubr::ggarrange(teaser_3) +
   )
 
 ggsave(filename = here("output", "teaser", "teaser_3.png"), width = 5, height = 5, dpi = 500)
+```
+
+```{r beep, include=FALSE}
+beep()
 ```
 

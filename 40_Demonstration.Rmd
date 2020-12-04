@@ -214,7 +214,7 @@ label_positions %>%
     subtitle = paste("Websites for terms:", plot_terms),
     caption = paste("Mean location and regions of ", upper_limit, "URLs")
   ) +
-  my_theme2 +
+  my_theme +
   theme(
     plot.margin = margin(5, 5, 5, 5),
     panel.grid = element_blank(),
@@ -317,4 +317,10 @@ ggarrange(singleplot)  +
 
 # save
 ggsave(here::here("output", "multiframe.png"), width = 8, height = 10)
+```
+
+
+
+```{r include=FALSE}
+beep()
 ```
