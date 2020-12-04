@@ -1,0 +1,185 @@
+---
+title: "Spatial Stability"
+author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
+date: "3/12/2020"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_float: true
+    code_folding: hide
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(gghilbertstrings)
+library(patchwork)
+library(beepr)
+library(glue)
+library(here)
+library(ggdark)
+source(here("R", "our_theme.R"))
+theme_set(theme_bw() + my_theme)
+
+set.seed(12345)
+
+```
+
+# Spatial stability when increasing the order
+
+```{r stability_plot, fig.asp=1}
+
+plot_curve <- function(d) {
+d %>% gghilbertplot(val, add_curve = TRUE, alpha = 0) +
+  coord_fixed() +
+  guides(color = FALSE, size = FALSE) +
+  theme(
+    plot.background = element_rect(fill = "grey50", color = "grey50"),
+    plot.title = element_text(color = "white"),
+    plot.subtitle = element_text(color = "white"),
+    plot.margin = margin(15, 15, 15, 15),
+    plot.caption = element_text(color = "white"),
+    panel.background = element_blank(), #element_rect(fill = "grey30", color = "grey50"),
+    axis.line = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position = "none",
+    axis.title = element_blank(),
+    panel.border = element_blank(),
+    axis.text = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )  
+}
+
+p1 <- data.frame(val = 1:4^1) %>% plot_curve()
+p2 <- data.frame(val = 1:4^2) %>% plot_curve()
+p3 <- data.frame(val = 1:4^3) %>% plot_curve()
+p4 <- data.frame(val = 1:4^4) %>% plot_curve()
+
+(p1 + p2) / (p3 + p4)
+
+```
+
+
+
+# Spatial Stability when adding data
+
+Here, we quickly demonstrate that large Hilbert curves are spatially, relatively stable against changes.
+
+This is our data.
+
+```{r data_prep}
+data_size <- 10000
+spacing <- 4
+region_sep <- 5
+insertion_size <- 100
+
+
+region_size <- data_size / region_sep
+
+if (region_size != round(region_size)) {
+  stop(glue("Data size of {data_size} cannot be devided into {region_sep} parts."))
+}
+
+color_vec <- c()
+for (region in 1:region_sep) {
+  cat(glue("Generating color {region}\n"))
+  color_vec <- c(color_vec, rep(region, region_size))
+}
+
+d1 <- tibble(val = (1:data_size)*spacing,
+             size = runif(data_size, 1, 2),
+             # create random sizes
+             color = color_vec)
+
+d1
+```
+
+## Plotting the data
+
+```{r plotting, out.width="100%", fig.width=10, fig.asp=0.9}
+elem_count <- nrow(d1)
+
+(p1 <- d1 %>% 
+  mutate(new_id = 1:n()) %>% # compress the ids
+  gghilbertplot(new_id, val, color = factor(color), size = size, 
+              alpha = 0.5,
+              curve_alpha = 0.4, 
+              add_curve = TRUE) +
+  labs(title = glue("Hilbert curve of {elem_count} elements"), x = NULL, y = NULL
+       ) +
+  coord_fixed() +
+  scale_color_viridis_d(end = (region_sep / (region_sep + 1) )) +
+  guides(color = FALSE, size = FALSE) +
+  theme(
+    legend.position = "none",
+    axis.title = element_blank(),
+    axis.text = element_blank()
+  )
+)
+```
+
+# Adding data
+
+```{r}
+# Pick a random position in the data set
+pos <- rdunif(1, b = data_size)
+
+
+added_data <- tibble(
+  val = ((1:insertion_size)/spacing + pos * spacing), 
+  # this creates values that fit in the space after pos and the next item
+  size = runif(insertion_size, 1, 2),
+  # create random sizes
+  color = rep(region_sep + 1, insertion_size)
+)
+
+# sort in the new items
+d2 <- d1 %>% bind_rows(added_data) %>% arrange(val) 
+d2
+```
+
+```{r plotting2, out.width="100%", fig.width=10, fig.asp=0.9}
+
+elem_count <- nrow(d2)
+
+(p2 <- d2 %>% 
+  mutate(new_id = 1:n()) %>% # compress ids
+  gghilbertplot(new_id, color = factor(color), size = size, 
+              alpha = 0.5,
+              curve_alpha = 0.4, 
+              add_curve = TRUE) +
+  labs(title = glue("Hilbert curve of {elem_count} elements"), x = NULL, y = NULL
+       ) +
+  coord_fixed() +
+  scale_color_viridis_d() +
+  guides(color = FALSE, size = FALSE) +
+  theme(
+    legend.position = "none",
+    axis.title = element_blank(),
+    axis.text = element_blank()
+  )
+)
+```
+
+# Comparison
+
+```{r side_by_side, out.width="100%", fig.width=10, fig.asp=1.8}
+r1 <- (p1 + p2) + 
+  plot_annotation(title = "Adding 1% of additional data does not impact location to a large extent",
+    subtitle = 
+    glue("Comparison of Hilbert Curves after inserting {insertion_size} elements at random location")
+    )
+
+r1
+
+ggsave(plot = r1, filename = here("output", "spatial_stability.pdf"), width = 14, height = 7)
+
+ggsave(plot = r1, filename = here("output", "spatial_stability.png"), width = 14, height = 7, dpi = 500)
+
+```
+
