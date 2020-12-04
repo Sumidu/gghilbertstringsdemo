@@ -44,7 +44,7 @@ ffmpeg <- FALSE
 
 SOME DESCRIPTION HERE
 
-```{r}
+```{r reduced_curve}
 df <- data.frame(id = 1:129)
 gghilbertstrings::gghilbertplot(df, id, add_curve = TRUE, alpha = 0, curve_color = "white") +
   geom_path(color = "seagreen1", size = 1) +
@@ -247,7 +247,7 @@ ggsave(filename = here("output", "locationssmall.png"), width = 5, height = 5.5)
 
 ## Comparison over Time
 
-```{r}
+```{r comparison_over_time}
 # generics 
 n_colors <- dim(regions %>% select(domain_number) %>% unique())[1]
 color_scheme <- grDevices::topo.colors(n_colors) %>% sample()
@@ -297,7 +297,7 @@ ggplot(plot_data) +
   ) +
   coord_fixed() +
   facet_grid(rows = vars(search_date), cols = vars(keyword)) +
-  my_theme2 +
+  my_theme +
   theme(
     panel.grid = element_blank(),
     axis.title.x = element_blank(),
@@ -321,6 +321,6 @@ ggsave(here::here("output", "multiframe.png"), width = 8, height = 10)
 
 
 
-```{r include=FALSE}
+```{r beep, include=FALSE}
 beep()
 ```

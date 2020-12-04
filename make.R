@@ -23,6 +23,9 @@ unlink(delfiles)
 # Which files to render?
 rmds <- c("00_Teaser.Rmd", "15_Figure_Hilbert_Order.Rmd", "20_Compare_Performance.Rmd", "30_Spatial_Stability.Rmd", "40_Demonstration.Rmd")
 
+# for testing purposes
+#rmds  <- c("40_Demonstration.Rmd")
+
 #render files in to versions
 for (rmd in rmds) {
   rmarkdown::render(rmd, output_dir = anon_folder, params = anon_params)
