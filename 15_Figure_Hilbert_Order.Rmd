@@ -1,8 +1,8 @@
 ---
 title: "Create Order Figure"
-author: Anonymized
-#author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
 date: "3/12/2020"
+params: 
+  authors : "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
 output: 
   html_document:
     number_sections: true
@@ -22,7 +22,9 @@ source(here("R", "our_theme.R"))
 theme_set(theme_bw() + my_theme)
 ```
 
-```{r}
+#### `r params$authors` {-}
+
+```{r generate_order_plot}
 plot_list <- list()
 title_list <- c(
   expression(1^{st}~"order"),
