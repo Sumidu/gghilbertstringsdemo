@@ -5,7 +5,7 @@
 # where is the data?
 pth <- here::here("data")
 # should I recreate the data from original raw CSV data?
-create_rds_files_from_csv <- FALSE
+create_rds_files_from_csv <- TRUE
 
 
 
@@ -14,7 +14,7 @@ get_terms <- function(){
   #files <- dir(pth, pattern = ".*csv")
   #terms <- str_match(files,"(.*)_.{2}.csv")[,2] %>% unique()
   #terms
-  c("AfD", "CDU")
+  c("AfD", "CDU", "SPD")
 }
 
 
