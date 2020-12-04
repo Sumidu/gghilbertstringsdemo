@@ -1,3 +1,4 @@
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -#
 # This file upload all html output to the OSF repository
 
 # Setup ----
@@ -15,7 +16,7 @@ delfiles <- c(dir(anon_folder, patter = "*.html", full.names = TRUE),
               dir(normal_folder, patter = "*.html", full.names = TRUE))
 unlink(delfiles)
 
-
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -#
 # Render files ----
 
 # Which files to render?
@@ -28,6 +29,7 @@ for (rmd in rmds) {
 
 }
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -#
 # Upload files to OSF ----
 
 # Anonymized folder
@@ -41,6 +43,9 @@ files <- dir(path = normal_folder, pattern = "*.html", full.names = TRUE)
 osf_upload(x = node, path = files, progress = TRUE, conflicts = "overwrite")
 
 
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -#
 # Upload figures to sharelatex ----
 ### FIX THIS
 
