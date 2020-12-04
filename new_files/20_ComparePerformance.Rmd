@@ -1,0 +1,180 @@
+---
+title: "Compare Performance"
+author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
+date: "3/12/2020"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_float: true
+    code_folding: hide
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(glue)
+library(here)
+library(magrittr)
+library(stats)
+source(here("R", "our_theme.R"))
+theme_set(theme_bw() + my_theme)
+```
+
+
+# Benchmarking gghilbertstrings
+
+## Setup of the comparison
+
+First, we load the required packages and create a tibble that contains the data to visualize.
+
+```{r benchmark_prep}
+if (FALSE) {
+  if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+  
+  BiocManager::install("HilbertCurve")
+}
+
+library(microbenchmark)
+library(HilbertCurve)
+library(gghilbertstrings)
+
+df <- tibble(val = 1:256,
+             size = runif(256, 1, 5),
+             # create random sizes
+             color = rep(c(1, 2, 3, 4), 64))
+
+reps <- 1000 #takes about 50 seconds on iMac i9 3.5GHz
+```
+
+This is the data that we use for the visualization.
+
+```{r benchmark_prep_data}
+df
+```
+
+
+## Running the benchmark
+We run the creation of a coordinate system `r reps` times.
+
+```{r benchmark, echo=TRUE, results='hide', class.source = 'fold-show'}
+# Compare the creation of coordinate systems
+mb <- microbenchmark(times = reps,
+                     HilbertCurve = {
+                       hc <- HilbertCurve(1, 256, level = 4, newpage = FALSE)
+                     },
+                     gghilbertstrings = {
+                       ggh <- hilbertd2xy(n = 2 ^ 8, df$val)
+                     })
+```
+
+
+# What is being tested here?
+
+## gghilbertstrings
+
+```{r show_plot, echo=TRUE, results='hide', class.source = 'fold-show'}
+gghilbertplot(df,
+              val,
+              color = factor(color),
+              size = size,
+              add_curve = TRUE) +
+  coord_fixed()
+```
+
+## HilbertCurve
+
+```{r show_plot2, echo=TRUE, results='hide', class.source = 'fold-show'}
+hc <- HilbertCurve(1, 256, reference = TRUE)
+hc_points(hc, x1 = df$val, 
+          gp = gpar(fill = c("white", "red", "blue", "green")))
+```
+
+
+
+# Plotting the results
+
+```{r}
+# extract benchmark data
+expression <- mb$expr
+time <- mb$time
+
+measured_times <- data.frame(
+  expression = expression,
+  times = time
+)
+
+measured_times %<>% mutate(times = times / 1000000)
+
+measured_times %>%
+  group_by(expression) %>%
+  filter(
+    times < stats::quantile(.$times, 0.95) 
+    & times > stats::quantile(.$times, 0.05)
+  ) -> measured_times_cropped
+
+# plot
+measured_times_cropped %>% 
+  ggplot(aes(x = expression, y = times)) +
+  geom_violin(color = "transparent", fill = "gold2", alpha = 0.5) +
+  coord_flip() +
+  labs(
+    title = glue("Comparison on {reps} runs [0.05 - 0.95 percentile]"),
+    y = "Time [milliseconds]",
+    caption = "Red dashed lines indicate median execution times."
+  ) +
+  geom_hline(
+    yintercept = median(
+      (measured_times_cropped %>% filter(expression == "gghilbertstrings"))$times
+    ),
+    linetype = "dashed",
+    color = "firebrick",
+    size = 1
+  ) +
+  geom_hline(
+    yintercept = median(
+      (measured_times_cropped %>% filter(expression == "HilbertCurve"))$times
+    ),
+    linetype = "dashed",
+    color = "firebrick",
+    size = 1
+  ) +
+  theme(
+    plot.background = element_rect(fill = "grey50", color = "grey50"),
+    plot.title = element_text(color = "white"),
+    plot.margin = margin(15, 15, 15, 15),
+    panel.background = element_rect(fill = "grey30", color = "grey50"),
+    panel.grid = element_line(color = "grey50", size = 1),
+    axis.title.x = element_text(color = "white", margin = margin(t = 10, b = 10)),
+    axis.title.y = element_blank(),
+    axis.text = element_text(color = "white"),
+    axis.ticks = element_blank(),
+    legend.position = "None",
+    plot.caption = element_text(color = "white")
+  )
+
+# save
+ggsave(here::here("output", "benchmark.pdf"), width = 6.5, height = 3.5, dpi = 900)
+```
+
+
+```{r benchmark_plot, message=FALSE, warning=FALSE, eval=FALSE}
+autoplot(mb) +
+  coord_flip() +
+  ggtitle(
+    glue("Comparison of runtime performance using {reps} repetions on 4 levels")
+    ) +
+  labs(caption = "X-Axis on log-scale") +
+  theme_bw()
+```
+
+## Results as a table
+Values are microseconds.
+
+```{r benchmark2}
+mb %>% 
+  summary() %>% 
+  as_tibble() 
+```

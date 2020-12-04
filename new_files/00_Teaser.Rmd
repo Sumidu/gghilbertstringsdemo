@@ -1,0 +1,213 @@
+---
+title: "Create Subplots for Teaser Figure"
+author: Anonymized
+#author: "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez"
+date: "3/12/2020"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_float: true
+    code_folding: hide
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# dependencies
+library(tidyverse)
+library(magrittr)
+library(lubridate)
+library(gghilbertstrings)
+library(gganimate)
+library(progress)
+library(glue)
+library(beepr)
+library(ggnewscale)
+library(patchwork)
+library(gifski)
+library(here)
+library(ggpubr)
+source(here::here("R", "our_theme.R"))
+
+if (!("teaser" %in% here::here("output"))) {dir.create(here::here("output", "teaser"))}
+
+# parameters
+top_count <- 30
+```
+
+```{r read_data}
+terms <- c("CDU", "AfD")
+all_data <- NULL
+for (chosen_term in terms) {
+  all_data <- bind_rows(all_data, read_rds(here::here("data", glue("datenspende{chosen_term}.rds"))))
+}
+
+all_data <- all_data %>%
+  mutate(search_date = as_date(search_date)) %>%  # fix date as only days
+  mutate(domain = str_replace_all(domain, "^[.](.+)", "\\1")) %>%  # fix some broken domains
+  mutate(url = str_replace_all(url, "^[.](.+)", "\\1"))
+```
+
+
+# Teaser 1
+
+```{r display_data}
+# view data for screenshot
+all_data %>% 
+  select(keyword, search_date, url, domain) %>% 
+  head(20)
+```
+
+
+# Teaser 2
+
+```{r create_teaser_curve}
+df <- data.frame(id = 1:256)
+curve <- gghilbertstrings::gghilbertplot(df, id, add_curve = TRUE, alpha = 0, curve_color = "white") +
+  coord_fixed() +
+  my_theme +
+  theme(
+    plot.background = element_rect(fill = "grey50", color = "transparent"),
+    panel.background = element_rect(fill = "grey30", color = "transparent"),
+    panel.grid = element_blank(),
+    plot.title = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.line = element_blank()
+  )
+
+ggarrange(curve) +
+  theme(plot.background = element_rect(fill = "grey50", color = "transparent"))
+
+ggsave(here::here("output", "teaser", "teaser_2.png"), width = 5, height = 5, dpi = 500)
+```
+
+
+# Teaser 3
+
+
+```{r create_coordinates}
+# create coordinates for all possible urls and collect timing
+{
+  start.time <- Sys.time()
+  all_data <- all_data %>%
+    create_id_column(url)
+  end.time <- Sys.time()
+  time.taken <- end.time - start.time
+  print(time.taken)
+  beep()
+}
+
+upper_limit <- max(all_data$gghid)
+```
+
+```{r create_regions}
+# encode domains
+regions <- all_data %>% 
+  select(gghid, domain, url) %>% unique() %>% 
+  mutate(domain_number = as.numeric(factor(domain))) %>%  ## used to be %% 2
+  mutate(domain_number = factor(domain_number)) %>% 
+  create_coordinates(gghid) %>% 
+  arrange(gghid)
+```
+
+
+```{r find_top_domains}
+plot_terms <- all_data %>% 
+  pull(keyword) %>% 
+  unique() %>% 
+  paste(collapse = ", ")
+
+# find all domains that occur most frequently
+top_domains <- all_data %>%
+  group_by(domain) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  head(top_count)
+
+# take all urls to top domains
+mean_positions <- all_data %>%
+  select(domain, gghid) %>%
+  right_join(top_domains) %>%
+  bind_rows(tibble(domain = c("aaaa","zzzz"), gghid = c(1, upper_limit))) %>% 
+  create_coordinates(gghid) %>% 
+  group_by(domain) %>%  # find the average domain position
+  summarize(
+    x = round(mean(x),2),
+    y = round(mean(y),2)
+  ) %>% 
+  ungroup()
+
+# add artificial start and endpoints to the label data to prevent truncated coordinate system
+label_positions <- mean_positions %>%
+  filter(!str_detect(domain, "aaaa")) %>%
+  filter(!str_detect(domain, "zzzz"))
+```
+
+```{r create_teaser_map}
+# generics 
+set.seed(3)
+n_colors <- dim(regions %>% select(domain_number) %>% unique())[1]
+color_scheme <- grDevices::topo.colors(n_colors) %>% sample()
+
+# preview label positions
+label_positions %>%
+  ggplot() +
+  aes(x = x) +
+  aes(y = y) +
+  aes(label = domain) +
+  scale_color_manual(values = color_scheme) +
+  scale_fill_manual(values = color_scheme) +
+  geom_point(
+    data = regions,
+    mapping = aes(x = x, y = y, color = domain_number, group = "1"),
+    alpha = 0.3,
+    size = 1.2,
+    shape = 15
+  ) +
+  guides(color = FALSE) +
+  theme(
+    legend.position = "none",
+    axis.title = element_blank(),
+    axis.text = element_blank()
+  ) +
+  ggrepel::geom_label_repel(
+    seed = 123, 
+    size = 2, 
+    show.legend = F, 
+    min.segment.length = 0, 
+    color = "white",
+    fill = "black"
+  ) +
+  coord_fixed() +
+  scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
+  my_theme +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  NULL -> teaser_3
+
+# background color
+ggpubr::ggarrange(teaser_3) +
+  theme(
+    plot.background = element_rect(fill = "grey50", color = "grey50"),
+    plot.margin = margin(15, 15, 15, 15),
+    plot.caption = element_text(color = "white"),
+    panel.background = element_rect(fill = "grey50", color = "grey50"),
+    panel.grid = element_line(color = "grey50", size = 1),
+    legend.position = "None"
+  )
+
+ggsave(filename = here("output", "teaser", "teaser_3.png"), width = 5, height = 5, dpi = 500)
+```
+
