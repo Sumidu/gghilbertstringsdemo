@@ -21,6 +21,7 @@ library(magrittr)
 library(lubridate)
 library(gghilbertstrings)
 library(gganimate)
+library(ggpubr)
 library(progress)
 library(glue)
 library(beepr)
@@ -51,15 +52,23 @@ gghilbertstrings::gghilbertplot(df, id, add_curve = TRUE, alpha = 0, curve_color
   coord_fixed() +
   labs(title = "Reduced curve") +
   theme(
-    plot.background = element_rect(fill = "grey50", color = "transparent"),
-    panel.background = element_rect(fill = "grey50", color = "transparent"),
-    panel.grid = element_blank(),
-    plot.title = element_text(size = 20, color = "white"),
-    axis.title = element_blank(),
-    axis.text = element_blank(),
+    plot.background = element_rect(fill = "grey50", color = "grey50"),
+    plot.title = element_text(color = "white"),
+    plot.subtitle = element_text(color = "white"),
+    plot.margin = margin(15, 15, 15, 15),
+    plot.caption = element_text(color = "white"),
+    panel.background = element_blank(), #element_rect(fill = "grey30", color = "grey50"),
+    axis.line = element_blank(),
     axis.ticks = element_blank(),
-    axis.line = element_blank()
-  ) -> hilbert_overlay
+    legend.position = "none",
+    axis.title = element_blank(),
+    panel.border = element_blank(),
+    axis.text = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )   -> hilbert_overlay
 
 ggarrange(hilbert_overlay) +
   theme(plot.background = element_rect(fill = "grey50", color = "transparent"))
@@ -256,7 +265,7 @@ all_data %>%
   filter(country == "DE") %>% 
   filter(
     #search_date == "2017-09-22" |
-    search_date == "2017-09-23" |
+    search_date == "2017-07-24" |
     search_date == "2017-09-24"
   ) %>% 
   mutate(rank = 10 - rank) %>% 
@@ -295,7 +304,7 @@ ggplot(plot_data) +
     alpha = 0.7
   ) +
   coord_fixed() +
-  facet_grid(rows = vars(search_date), cols = vars(keyword)) +
+  facet_grid(cols = vars(search_date), rows = vars(keyword)) +
   my_theme +
   theme(
     panel.grid = element_blank(),
@@ -303,7 +312,12 @@ ggplot(plot_data) +
     axis.title.y = element_blank(),
     axis.text = element_blank(),
     axis.ticks = element_blank()
-  ) -> singleplot
+  )  +
+#  annotate(geom = "rect", xmin = )
+  labs(title = "We see less variability on the day of the election for CDU",
+       subtitle = "Comparing search results at different times for two keywords") -> singleplot
+
+
 
 ggarrange(singleplot)  +
   theme(
@@ -312,10 +326,10 @@ ggarrange(singleplot)  +
     panel.background = element_rect(fill = "grey50", color = "grey50"),
     panel.grid = element_line(color = "grey50", size = 1),
     legend.position = "None"
-  )
+  ) 
 
 # save
-ggsave(here::here("output", "multiframe.png"), width = 8, height = 10)
+ggsave(here::here("output", "multiframe.png"), width = 8, height = 8.2)
 ```
 
 

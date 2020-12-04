@@ -1,5 +1,6 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -#
 # This file upload all html output to the OSF repository
+# Total time taken 8:12 mins
 
 # Setup ----
 library(osfr)
@@ -63,5 +64,7 @@ files <- dir("output/", pattern = "*.png|*.pdf", full.names = TRUE)
   file.copy(files,
             target_folder, overwrite = TRUE)
 }
+
+message("All done...")
 
 beepr::beep(2)
