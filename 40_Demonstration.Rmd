@@ -105,7 +105,6 @@ Total duration is `r date_duration`.
   end.time <- Sys.time()
   time.taken <- end.time - start.time
   print(time.taken)
-  beep()
 }
 
 upper_limit <- max(all_data$gghid)
@@ -256,7 +255,7 @@ color_scheme <- grDevices::topo.colors(n_colors) %>% sample()
 all_data %>% 
   filter(country == "DE") %>% 
   filter(
-    search_date == "2017-09-22" |
+    #search_date == "2017-09-22" |
     search_date == "2017-09-23" |
     search_date == "2017-09-24"
   ) %>% 
