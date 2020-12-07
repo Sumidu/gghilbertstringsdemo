@@ -10,7 +10,7 @@ osf_auth()
 ## Paramters ----
 anon_folder <- "output/anonymized_html/"
 normal_folder <- "output/html/"
-normal_authors <- list(authors = "Poornima Belavadi, Nils Plettenberg, Johannes Nakayama, André Calero Valdez")
+normal_authors <- list(authors = "Nils Plettenberg, Johannes Nakayama, Poornima Belavadi, André Calero Valdez")
 anon_params <- list(authors = "Anonymized")
 
 # Remove all html output ----
@@ -22,7 +22,15 @@ unlink(delfiles)
 # Render files ----
 
 # Which files to render?
-rmds <- c("00_Teaser.Rmd", "15_Figure_Hilbert_Order.Rmd", "20_Compare_Performance.Rmd", "30_Spatial_Stability.Rmd", "40_Demonstration.Rmd")
+rmds <-
+  c(
+    "00_Teaser.Rmd",
+    "15_Figure_Hilbert_Order.Rmd",
+    "20_Compare_Performance.Rmd",
+    "30_Spatial_Stability.Rmd",
+    "35_Spatial_Stability_Over_Time.Rmd",
+    "40_Demonstration.Rmd"
+  )
 
 # for testing purposes
 #rmds  <- c("40_Demonstration.Rmd")

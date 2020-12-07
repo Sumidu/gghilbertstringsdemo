@@ -28,3 +28,4 @@ vignettes/*.pdf
 .Renviron
 /*.DS_Store
 *.html
+20_Compare_Performance_files
