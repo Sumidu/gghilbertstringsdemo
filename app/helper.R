@@ -1,9 +1,9 @@
 ### helper functions for the app
 
 
-getData <- function() {
+create_summary_data <- function() {
 
-
+  library(tidyverse)
   filenames <- dir(here::here("data"), pattern = "*.rds", full.names = T)
 
   all_data <- NULL
@@ -13,11 +13,17 @@ getData <- function() {
   }
 
   all_data <- all_data %>%
-    mutate(search_date = as_date(search_date)) %>% # Fix date as only days
+    mutate(search_date = lubridate::as_date(search_date)) %>% # Fix date as only days
     mutate(domain = str_replace_all(domain, "^[.](.+)", "\\1")) %>%  # fix some broken domains
-    mutate(url = str_replace_all(url, "^[.](.+)", "\\1"))
+    mutate(url = str_replace_all(url, "^[.](.+)", "\\1")) %>%
+    mutate(url = str_remove(url, pattern = "&sa=.*$")) # remove left over google analytics url fragments
 
-  all_data
+  all_data %>% group_by(keyword, country, search_date, url, domain) %>%
+    filter(rank < 20) %>%
+    summarise(rank = sum(1/(rank + 1))) %>%
+    ungroup() %>%
+    #ggplot() + aes(x = rank) + geom_histogram() + scale_x_log10()
+  write_rds("data/summary_data.RDS", compress = "xz")
 }
 
 
