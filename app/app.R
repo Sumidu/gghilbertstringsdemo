@@ -18,152 +18,48 @@ library(shinyBS)
 source("helper.R")
 
 
-
 # UI ----
 
 
-menu <- dashboardSidebar(
-    sidebarMenu(
-        id = "tabs",
-        menuItem("Introduction", tabName = "intro", icon = icon("dashboard")),
-        menuItem("App", tabName = "app", icon = icon("th"))
-    )
-)
-
-# ui:body ---
-body <- dashboardBody(tabItems( # First tab content
-    tabItem(tabName = "intro",
-            fluidRow(
-                box(width = 12,
-                    title = "Introduction",
-                    p("Welcom to our user study. In this study we want to understand how a novel visualization is understood by new users."),
-                    p("Youtube Video in here:"),
-                    p("Please click on \"Start the Task\" as soon as you are ready."),
-                    shinycssloaders::withSpinner(
-                        shiny::uiOutput("ui_start_app"))
-                    )
-
-            )
-            ),
-    tabItem(tabName = "app",
-            fluidRow(
-                shiny::column(width = 9,
-                box(
-                    width = 12,
-                    title = "Visualization",
-                    uiOutput("ui_date_selector"),
-                    shiny::actionButton("cache_invalidation","Re-Render")
-                ),
-                shiny::fluidRow(
-                    box(width = 7,
-                    plotOutput(
-                        "vis",
-                        width = "600px",
-                        height = "600px",
-                        hover = "vis_hover",
-                        click = "vis_click",
-                        brush = "vis_brush"
-                    )),
-                    box(width = 5,
-                        shiny::htmlOutput("tooltip")
-                    ),
-                    box(width = 12,
-                    DT::DTOutput("info"),
-                    shiny::textOutput("debug")
-                    ),
-                )
-                ),
-                shiny::column(width = 3,
-                box(
-                    width = 12,
-                    title = "Options",
-                    sliderInput(
-                        "alpha",
-                        label = "Alpha",
-                        min = 0.01,
-                        max = 1,
-                        step = 0.1,
-                        value = .3
-                    ),
-                    sliderInput(
-                        "bkg_size",
-                        label = "Size of background points",
-                        min = 0.1,
-                        max = 5,
-                        step = 0.1,
-                        value = 2
-                    ),
-                    sliderInput(
-                        "label_size",
-                        label = "Size of labels",
-                        min = 0.5,
-                        max = 10,
-                        step = 0.5,
-                        value = 5
-                    ),
-                    br(),
-                    sliderInput(
-                        "data_size",
-                        label = "Base size of data points",
-                        min = 1,
-                        max = 10,
-                        step = 0.5,
-                        value = 1
-                    )
-
-                ),
-                box(width = 12,
-                    title = "General Settings",
-                    sliderInput("data_fraction", "How much data do you want to work with?",
-                                min = 1, max = 100, value = 100, step = .5, post = "%"),
-                    shiny::textOutput("nrows"),
-                    sliderInput("anim_speed", "Animation delay", min = 15, max = 1000, value = 200, step = 5),
-                    shiny::uiOutput("ui_party_selector"),
-                    shiny::checkboxInput("show_labels", "Show labels for regions", value = T)
-                )
-                )
-
-            )
-        )
-    )
-)
 
 
 
 
 
 # Server ----
-server <- function(input, output, session) {
+shinyServer(function(input, output, session) {
 
 
-
+    # reactive values ----
     sem <- reactiveValues(setting = 1)
 
+
+    # data management ----
     getData <- reactive({
 
 
-        #filenames <- dir(here::here("data"), pattern = "*.rds", full.names = T)
-        #all_data <- NULL#
+        #filenames <- dir(here::here("app","data"), pattern = "*.rds", full.names = T)
+        all_data <- NULL
 
-        withProgress(message = 'Reading in Data', value = 0, {
+        #withProgress(message = 'Reading in Data', value = 0, {
             all_data <- read_rds("../data/summary_data.RDS")
             # Number of times we'll go through the loop
             #n <- length(filenames) + 2
 
             #for (file in filenames) {
-            #    # Increment the progress bar, and update the detail text.
+                # Increment the progress bar, and update the detail text.
             #   incProgress(1/n, detail = paste("Reading file", basename(file)))
 
-            #    all_data <- bind_rows(all_data, read_rds(file))
+             #   all_data <- bind_rows(all_data, read_rds(file))
 
-            #}
-            #incProgress((n - 1)/n, detail = paste("Finalizing Data"))
-            #all_data <- all_data %>%
-            #    mutate(search_date = as_date(search_date)) %>% # Fix date as only days
-            #    mutate(domain = str_replace_all(domain, "^[.](.+)", "\\1")) %>%  # fix some broken domains
-            #    mutate(url = str_replace_all(url, "^[.](.+)", "\\1"))
+          #  }
+           # incProgress((n - 1)/n, detail = paste("Finalizing Data"))
+           # all_data <- all_data # %>%
+                #mutate(search_date = as_date(search_date)) %>% # Fix date as only days
+             #   mutate(domain = str_replace_all(domain, "^[.](.+)", "\\1")) %>%  # fix some broken domains
+              #  mutate(url = str_replace_all(url, "^[.](.+)", "\\1"))
 
-        })
+       # })
 
 
 
@@ -207,16 +103,21 @@ server <- function(input, output, session) {
         all_data
     })
 
-    output$nrows <- renderText({
-        paste(nrow(raw_data()) %>% scales::number(big.mark = ",") , " rows of data")
-    })
-
-
     id_data <- reactive({
         all_data <- raw_data()
         i_data <- all_data %>% create_id_column(url)
         i_data
     })
+
+
+    # UI generation ----
+    output$nrows <- renderText({
+        paste(nrow(raw_data()) %>% scales::number(big.mark = ",") , " rows of data")
+    })
+
+
+
+    # UI reactives ----
 
     selected_data <- reactive({
         i_data <- id_data()
@@ -326,6 +227,136 @@ server <- function(input, output, session) {
         xmax = max(regions$x)
         ymax = max(regions$y)
 
+        #message("Render new plot.")
+        # --- plot
+        ggplot(plot_data) +
+            scale_color_manual(values = color_scheme) +
+            #geom_point(
+            #    data = regions,
+            #    mapping = aes(x = x, y = y, color = domain_number, group = "1"),
+            #    alpha = alpha_val,
+            #    size = size_bkg_val,
+            #    shape = 15
+            #) +
+            new_scale_color() +
+            geom_point(
+                data = plot_data,
+                mapping = aes(x = x, y = y, color = keyword, size = as.numeric(rank)*data_size),
+                #color = "white",
+                alpha = 0.5
+            ) +
+            #geom_bin2d(data = plot_data,
+            #               mapping = aes(x = x, y = y, color = keyword, size = as.numeric(rank)*data_size),
+            #           binwidth = 3) +
+
+            coord_fixed() +
+            scale_x_continuous(limits = c(0, xmax)) +
+            scale_y_continuous(limits = c(0, ymax)) +
+            scale_size_continuous(limits = c(0, sizemax*10), range=c(1,30)) +
+            #facet_wrap(. ~ keyword) +
+            my_theme +
+            theme(
+                panel.grid = element_blank(),
+                axis.title.x = element_blank(),
+                axis.title.y = element_blank(),
+                axis.text = element_blank(),
+                axis.ticks = element_blank()
+            ) -> p
+
+
+        if (input$show_labels) {
+            p <- p +
+                ggrepel::geom_label_repel(
+                    data = label_positions,
+                    mapping = aes(x = x, y = y, label = domain),
+                    seed = 123,
+                    size = txt_size,
+                    show.legend = F,
+                    min.segment.length = 0,
+                    segment.size = 0.3,
+                    fill = "black",
+                    color = "grey80",
+                    alpha = 0.5
+                )
+        }
+        p
+    },
+    height = function() {
+        session$clientData$output_vis_width
+    }
+
+    ) %>% shiny::bindCache(input$date_selector, sem$setting)
+
+
+
+
+
+
+    output$debug <- renderText({
+        #nrow(id_data())
+        ""
+    })
+
+    # UI table output ----
+    output$info <- renderDT({
+        regions <- regions_data()
+        # With base graphics, need to tell it what the x and y variables are.
+        brushedPoints(regions, input$vis_brush) %>%
+            dplyr::bind_rows(
+                nearPoints(regions, input$vis_click)
+            ) %>%
+            select(url) %>% unique() %>%
+            mutate(link = paste0(paste0("<a href='http://",url,"', target ='_blank'>","Open","</a>")))
+        # nearPoints() also works with hover and dblclick events
+    }, escape = FALSE)
+
+
+
+    # UI tooltip ----
+    output$tooltip <- shiny::renderTable({
+        regions <- regions_data()
+        # With base graphics, need to tell it what the x and y variables are.
+        outputvariable <- nearPoints(regions, input$vis_hover) %>% pull(url)
+        #outputvariable <- brushedPoints(regions, input$vis_brush) %>% pull(url)
+
+        content <- c()
+
+        for (i in seq_along(outputvariable)) {
+            content <- c(content, outputvariable[i])
+        }
+        data.frame(`URL` = content)
+    })
+
+
+    output$zoomedview <- shiny::renderPlot({
+        req(input$date_selector)
+        req(input$vis_brush)
+
+        all_data <- raw_data()
+        i_data <- id_data()
+        regions <- regions_data()
+        upper_limit <- max(i_data$gghid)
+
+        alpha_val <- input$alpha
+        size_bkg_val <- input$bkg_size
+        txt_size <- input$label_size
+        data_size <- input$data_size
+        # find all domains that occur most frequently
+        # top_domains <- top_domains_re()
+
+
+        # add artificial start and endpoints to the label data to prevent truncated coordinate system
+        label_positions <- label_positions_re()
+
+        n_colors <- nrow(regions %>% select(domain_number) %>% unique())
+        color_scheme <- grDevices::topo.colors(n_colors) %>% sample()
+
+        plot_data <- plot_data_re()
+
+        sizemax = max(i_data$rank)
+        xmax = max(regions$x)
+        ymax = max(regions$y)
+
         if (!is.null(input$vis_brush )) {
             ymin <- input$vis_brush$ymin
             ymax <- input$vis_brush$ymax
@@ -398,48 +429,8 @@ server <- function(input, output, session) {
     },
     height = function() {
         session$clientData$output_vis_width
-    }
 
-    ) %>% shiny::bindCache(input$date_selector, sem$setting)
-
-
-
-
-
-    output$debug <- renderText({
-        #nrow(id_data())
-        ""
     })
-
-    output$info <- renderDT({
-        regions <- regions_data()
-        # With base graphics, need to tell it what the x and y variables are.
-        brushedPoints(regions, input$vis_brush) %>%
-            dplyr::bind_rows(
-                nearPoints(regions, input$vis_click)
-            ) %>%
-            select(url) %>% unique() %>%
-            mutate(link = paste0(paste0("<a href='http://",url,"', target ='_blank'>","Open","</a>")))
-        # nearPoints() also works with hover and dblclick events
-    }, escape = FALSE)
-
-
-
-
-    output$tooltip <- shiny::renderUI({
-        regions <- regions_data()
-        # With base graphics, need to tell it what the x and y variables are.
-        outputvariable <- nearPoints(regions, input$vis_hover) %>% pull(url)
-        #outputvariable <- brushedPoints(regions, input$vis_brush) %>% pull(url)
-
-        content <- list()
-
-        for (i in seq_along(outputvariable)) {
-            content <- list(content, p(outputvariable[i]))
-        }
-        div(h3("Data near the cursor:"), content)
-    })
-
 
 
     # date selector ----
@@ -464,21 +455,21 @@ server <- function(input, output, session) {
                            multiple = T, selectize = T)
 
     })
-}
+})
 
 
 
 
 
 
-# App ----
-shinyApp(
-    ui = dashboardPage(
-        dashboardHeader(title = "DataDonationVis"),
-        menu,
-        body
-    ),
-
-    server = server,
-
-)
+# # App ----
+# shinyApp(
+#     ui = dashboardPage(
+#         dashboardHeader(title = "DataDonationVis"),
+#         menu,
+#         body
+#     ),
+#
+#     server = server,
+#
+# )
