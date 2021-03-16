@@ -203,10 +203,26 @@ shinyServer(function(input, output, session) {
         )
     })
 
+
+
     # ui: handle start button ----
     observeEvent(input$start_app, {
         updateTabItems(session, "tabs", "app")
+        active(TRUE)
     })
+
+    observeEvent(input$done, {
+        active(FALSE)
+        time <- seconds_to_period(timer())
+        time_text <- paste0(time$minute, "m ", time$.Data, "s")
+        showModal(modalDialog(
+            title = "Experiment complete",
+            paste0("You have completed the experiment in ", time_text, ", thank you!")
+        ))
+    })
+
+
+
 
 
     # ui: handle re-render button ----
@@ -247,7 +263,7 @@ shinyServer(function(input, output, session) {
 
 
     # 4. PLOTTING ----
-    # Renderplot ----
+    # >> left plot ----
     output$vis <- renderPlot({
         req(input$date_selector)
 
@@ -293,10 +309,6 @@ shinyServer(function(input, output, session) {
                 #color = "white",
                 alpha = 0.5
             ) +
-            #geom_bin2d(data = plot_data,
-            #               mapping = aes(x = x, y = y, color = keyword, size = as.numeric(rank)*data_size),
-            #           binwidth = 3) +
-
             coord_fixed() +
             scale_x_continuous(limits = c(0, xmax)) +
             scale_y_continuous(limits = c(0, ymax)) +
@@ -341,7 +353,7 @@ shinyServer(function(input, output, session) {
 
 
 
-    # zoom plot ----
+    # >> zoom plot ----
     output$zoomedview <- shiny::renderPlot({
         req(input$date_selector)
         req(input$vis_brush)
@@ -502,6 +514,31 @@ shinyServer(function(input, output, session) {
     })
 
 
+    # Output the time left.
+    output$timeleft <- renderText({
+        paste("Time on task: ", seconds_to_period(timer()))
+    })
+
+    # Timer ----
+    timer <- reactiveVal(0)
+    active <- reactiveVal(FALSE)
+    observe({
+        invalidateLater(1000, session)
+        isolate({
+            if(active())
+            {
+                timer(timer()+1)
+                if(timer()> 30*60)
+                {
+                    active(FALSE)
+                    showModal(modalDialog(
+                        title = "Experiment complete",
+                        "You have completed the experiment in 30 Minutes, thank you!"
+                    ))
+                }
+            }
+        })
+    })
 
 
 })

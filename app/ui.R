@@ -84,8 +84,20 @@ body <- dashboardBody(tabItems( # First tab content
                               step = 0.5,
                               value = 10
                             )
-
-                          )
+                          ),
+                          box(width = 12,
+                              collapsible = T,
+                              collapsed = T,
+                              title = "Timer",
+                              textOutput('timeleft')
+                              ),
+                          box(width = 12,
+                              p("Task 1: On which date was the least/most personalization for the CDU?"),
+                              p("Task 2: Are there differences between the AFD and CDU with regards to personalization?"),
+                              p("Task 3: Do you think the visualization is good for the questions asked?"),
+                              p("Task 4: Do you think the data is good for the questions asked?"),
+                              actionButton("done", "Finish", icon = icon("flag-checkered"))
+                              )
 
             ),
             shiny::column(width = 9,
